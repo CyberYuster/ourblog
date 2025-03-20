@@ -1,0 +1,25 @@
+<%-include("header")-%>
+<info>
+  <div class="email-container">
+      <h1>Compose a Post</h1>
+      <form id="emailForm">
+          
+          <div class="form-group">
+              <label for="subject">Post Title:</label>
+              <input type="text" id="subject" name="subject" required>
+          </div>
+          <div class="form-group">
+              <label for="body">Body:</label>
+              <textarea id="body" name="body" rows="10" required></textarea>
+          </div>
+          <div class="form-group">
+              <label for="attachment">Attachment:</label>
+              <input type="file" id="attachment" name="attachment">
+              <button type="button" id="addAttachment">Add Attachment</button>
+          </div>
+          <div id="attachmentPreview" class="attachment-preview"></div>
+          <button type="submit" class="send-btn">Publish</button>
+      </form>
+  </div>
+</info>
+<%-include("footer")-%>
