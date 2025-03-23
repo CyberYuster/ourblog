@@ -18,18 +18,3 @@ document.getElementById('attachment').addEventListener('change', function (e) {
         reader.readAsDataURL(file);
     }
 });
-
-document.getElementById('emailForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const subject = document.getElementById('subject').value;
-    const body = document.getElementById('body').value;
-    const attachment = document.getElementById('attachment').files[0];
-
-    // Simulate sending the email (you would need a backend for actual functionality)
-    console.log('Subject:', subject);
-    console.log('Body:', body);
-    if (attachment) {
-        console.log('Attachment:', attachment.name);
-    }
-    alert('Email sent successfully!');
-});

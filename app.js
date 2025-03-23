@@ -6,6 +6,7 @@ const passport=require("passport");
 const FacebookStrategy=require("passport-facebook").Strategy;
 const session = require('express-session');
 const nodemailer=require("nodemailer");
+const _=require("lodash");
 
 const { OAuth2Client } = require('google-auth-library');
 
@@ -21,6 +22,8 @@ app.use(express.urlencoded({extended:true}));
 app.use(express.static("public"));
 app.set('view engine','ejs');
 
+let posts=[];
+
 // Session setup (required for Passport)
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -28,7 +31,7 @@ app.use(session({
     saveUninitialized: true,
     cookie: { secure: false } // Set to true if using HTTPS
   }));
-  console.log('Session Secret:', process.env.SESSION_SECRET);
+  // console.log('Session Secret:', process.env.SESSION_SECRET);
   // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
@@ -82,7 +85,8 @@ app.get('/profile', (req, res) => {
   
 
 app.get("/",(req,res)=>{
-res.render("home");
+  let array=req.body.title;
+res.render("home",{posts});
 });
 
 app.get("/about",(req,res)=>{
@@ -104,6 +108,10 @@ app.post("/signup",(req,res)=>{
     console.log('User signed up success:', { id, name, email, picture });
 
     res.json({ success: true, message: 'User signed up successfully success' });
+});
+
+app.get("/signin",(req,res)=>{
+  res.render("signin");
 });
 
 app.get('/auth/google', (req, res) => {
@@ -141,6 +149,46 @@ app.get('/auth/google/callback', async (req, res) => {
 
 app.get("/compose",(req,res)=>{
 res.render("compose");
+});
+
+app.post("/compose",(req,res)=>{
+  // let {subject,body}=req.body;
+let data={
+subject:req.body.subject,body:req.body.body
+};
+posts.push(data);
+  res.render("home",{posts});
+});
+
+app.get("/posts/:title",(req,res)=>{
+const Title=_.lowerCase(req.params.title);
+const checkData=posts.find(p=>_.lowerCase(p.subject)===Title);
+console.log(checkData);
+if(checkData){
+res.render("postPage",{checkData});
+}
+else{
+  console.log(404);
+}
+});
+
+app.post("/edit",(req,res)=>{
+  const {heading,body}=req.body;
+posts.subject=heading;
+posts.body=body;
+console.log("edit post : ",posts);
+res.render("home",{posts});
+});
+
+app.get("/edits/:title",(req,res)=>{
+  const Title=_.lowerCase(req.params.title);
+  const retrieve=posts.find(p=>_.lowerCase(p.subject)===Title);
+  if(retrieve){
+    console.log("the retrieve value is ",retrieve);
+res.render("edit",{retrieve});
+  }else{
+    console.log(console.dir);
+  }
 });
 
 app.post("/send-email",(req,res)=>{

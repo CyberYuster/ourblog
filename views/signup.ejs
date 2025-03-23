@@ -1,8 +1,35 @@
 <%-include("header")-%>
   
-    <a href="/auth/google">Sign up with Google</a>
 
-    <h1>Sign Up with Facebook</h1>
-<a href="/auth/facebook">Sign up with Facebook</a>
+<div class="icons"style="margin-top:2rem;text-align: center">
+  <div class="card col-md-6">
+    <div class="card-body">
+        <a href="/auth/google"><img src="picha/google.png"style="width:2.2rem;height:2.2rem">Sign in with Google</a>
+    </div>
+  </div>
+  <div class="card col-md-6">
+    <div class="card-body">
+        <a href="/auth/facebook"><img src="picha/facebook.png"style="width:2.2rem;height:2.2rem"> Sign in with Facebook</a>
+    </div>
+  </div>
+</div>
+<h6 style="text-align: center;" class="mt-4">OR</h6>
+<!-- <h8 style="text-align: center;">(if you don't have an email or password) sign up here</h8> -->
+
+<div class=""style="justify-content:center;align-items:center;display:flex;">
+    <form method="post" action="/signup">
+          <input type="text"name="username" placeholder="Enter your username" class="form-control" autocomplete="off"required>
+      <br>
+    
+          <input type="text" name="password"placeholder="Enter your password" class="form-control"required>
+      
+       <br>
+      <button class="btn btn-primary btn-sm" type="submit">SIGNUP</button>
+      <br>
+      <a href="/signin">you have an account already (login)</a>
+      <br>
+      <a href="#">Forgot Password ?</a>
+    </form>
+</div>
 
 <%-include("footer")-%> 
