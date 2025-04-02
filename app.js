@@ -7,6 +7,7 @@ const FacebookStrategy=require("passport-facebook").Strategy;
 const session = require('express-session');
 const nodemailer=require("nodemailer");
 const _=require("lodash");
+const { MongoClient,ObjectId} = require("mongodb");
 
 const { OAuth2Client } = require('google-auth-library');
 
@@ -22,8 +23,11 @@ app.use(express.urlencoded({extended:true}));
 app.use(express.static("public"));
 app.set('view engine','ejs');
 
-let posts=[];
+// let posts=[];
+let loggedUser={};
+let convertor={};
 
+let allPosts=[];
 // Session setup (required for Passport)
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -31,7 +35,7 @@ app.use(session({
     saveUninitialized: true,
     cookie: { secure: false } // Set to true if using HTTPS
   }));
-  // console.log('Session Secret:', process.env.SESSION_SECRET);
+
   // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
@@ -54,6 +58,38 @@ passport.use(new FacebookStrategy({
     // Save the user to your database or handle as needed
   console.log('User signed up with Facebook:', user);
   done(null, user);
+
+  const uri = "mongodb://127.0.0.1:27017";
+
+  const client = new MongoClient(uri);
+  
+  async function run() {
+    try {
+      const ourblog = client.db('ourblog');
+      const userr = ourblog.collection('users');
+
+      let compare=await userr.find({username:user.email,"accounts.type":"facebook"}).toArray();
+      console.log("compare from FB ",compare);
+
+      if(compare.length>0){
+        console.log("the username already exists, please create another one unique");
+        // res.render("home",{posts});
+      }else if(account_check.length>0){
+        await userr.updateOne({username:user.email},{$push:{accounts:{type:"facebook",facebookId:user.facebookId}}});
+        // res.render("home",{posts});
+      }
+      else{
+        await userr.insertOne({username:user.email,accounts:[{type:"facebook",facebookId:user.facebookId}]});
+        console.log("successfully saved data from FB to the DB");
+        // res.render("home",{posts});
+      }
+    } finally {
+      await client.close();
+    }
+  }
+  run().catch(console.dir);
+ 
+
 }));
 
 // Serialize and deserialize user (required for Passport)
@@ -72,21 +108,47 @@ app.get('/auth/facebook/callback',
   passport.authenticate('facebook', { failureRedirect: '/signup' }),
   (req, res) => {
     // Successful authentication, redirect to a success page
-    res.redirect('/profile');
+ 
+    const uri = "mongodb://127.0.0.1:27017";
+
+    const client = new MongoClient(uri);
+    
+    async function run() {
+      try {
+        const ourblog = client.db('ourblog');
+        const userr = ourblog.collection('users');
+        loggedUser=await userr.findOne({"accounts.type":"facebook","accounts.facebookId":req.user.facebookId});
+
+        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+
+        res.render('home',{convertor,allPosts});
+      }finally{
+await client.close();
+      }  
+    }
+    run().catch(console.dir);
+    
   }
 );
 
-app.get('/profile', (req, res) => {
-    if (!req.user) {
-      return res.redirect('/signup');
-    }
-    res.render('profile', { user: req.user });
-  });
-  
 
-app.get("/",(req,res)=>{
-  let array=req.body.title;
-res.render("home",{posts});
+app.get("/",async (req,res)=>{
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+try{
+const ourblog=client.db("ourblog");
+const postsCollection=ourblog.collection("posts");
+
+allPosts= await postsCollection.find().sort({createdAt:-1}).toArray();
+res.render("home",{convertor,allPosts});
+
+}catch(err){
+console.log(err);
+res.status(500).send("Error on retrieving posts");
+}finally{
+client.close();
+}
+
 });
 
 app.get("/about",(req,res)=>{
@@ -98,20 +160,75 @@ res.render("contact");
 });
 
 app.get("/signup",(req,res)=>{
-    res.render("signup");
+    res.render("signup",{data:""});
 });
 
 app.post("/signup",(req,res)=>{
-    const { id, name, email, picture } = req.body;
+  const uri = "mongodb://127.0.0.1:27017";
 
-    // Here you would typically save the user to your database
-    console.log('User signed up success:', { id, name, email, picture });
+  const client = new MongoClient(uri);
+  
+  async function run() {
+    try {
+      
+      const ourblog = client.db('ourblog');
+      const user = ourblog.collection('users');
+  
+      const {password,username}=req.body;
+      console.log("pass,user ",{password,username});
 
-    res.json({ success: true, message: 'User signed up successfully success' });
+      let compare=await user.find({username:{ $regex: new RegExp(`^${username}$`, "i") },accounts:[{type:"normal",password:password}]}).toArray();
+      // console.log("compare ",compare);
+      if(compare.length>0){
+        res.render("signup",{data:"the user already exists, you can not signup !!!"});
+        console.log("the user already exists, you can not signup");
+      }else{
+        await user.insertOne({username:username,accounts:[{type:"normal",password:password}]});
+        // res.send("success");
+        res.render("signup",{data:"well signed up !!!"});
+        console.log("user saved to database successfully");
+      }
+    } finally {
+      await client.close();
+    }
+  }
+  run().catch(console.dir);
 });
 
 app.get("/signin",(req,res)=>{
-  res.render("signin");
+  res.render("signin",{data:""});
+});
+
+app.post("/signin",(req,res)=>{
+  const uri = "mongodb://127.0.0.1:27017";
+
+  const client = new MongoClient(uri);
+  async function run() {
+    try {
+      const {username,password}= req.body;
+
+      const ourblog = client.db('ourblog');
+      const userr = ourblog.collection('users');
+
+      let user_existance=await userr.find({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":password}).toArray();
+     if(user_existance.length>0){
+        console.log("the username already exists, login success");
+        loggedUser=await userr.findOne({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":password});
+
+      convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+ 
+      res.render("home",{convertor,allPosts});
+      }
+      else{
+      console.log("user does not exist");
+      res.render("signin",{data:"user does not exist !!!"});
+      }
+    } finally {
+      await client.close();
+    }
+  }
+  run().catch(console.dir);
+
 });
 
 app.get('/auth/google', (req, res) => {
@@ -139,8 +256,50 @@ app.get('/auth/google/callback', async (req, res) => {
         const { sub, name, email, picture } = payload;
 
         console.log('User signed up well:', { sub, name, email, picture });
-        // res.send('Authentication successful! well');
-        res.send('successfully signed !!!');
+
+        const uri = "mongodb://127.0.0.1:27017";
+
+  const clients = new MongoClient(uri);
+  
+  async function run() {
+    try {
+      const ourblog = clients.db('ourblog');
+      const userr = ourblog.collection('users');
+
+      let compare=await userr.find({username:email,"accounts.type":"google"}).toArray();
+     
+      let account_check=await userr.find({username:email,"accounts.type":"facebook"}).toArray();
+      
+      if(compare.length>0){
+        console.log("the username already exists, please create another one unique");
+        loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
+
+        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+       console.log("convertor data : ",convertor);
+        res.render("home",{convertor,allPosts});
+      }else if(account_check.length>0){
+        await userr.updateOne({username:email},{$push:{accounts:{type:"google",GoogleId:sub}}});
+        loggedUser=await userr.findOne({username:email,"accounts.type":"facebook"});
+
+        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+
+        res.render("home",{convertor,allPosts});
+      }
+      else{
+        await userr.insertOne({username:email,accounts:[{type:"google",GoogleId:sub}]});
+        loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
+
+        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+
+        res.render("home",{convertor,allPosts});
+
+      }
+    } finally {
+      await clients.close();
+    }
+  }
+  run().catch(console.dir);
+
     } catch (error) {
         console.error('Error during authentication:', error);
         res.status(500).send('Authentication failed');
@@ -148,47 +307,126 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 app.get("/compose",(req,res)=>{
+  if(!convertor._id){ // checks if the user is logged in 
+   return res.redirect("/signin");
+  } 
 res.render("compose");
 });
 
-app.post("/compose",(req,res)=>{
-  // let {subject,body}=req.body;
-let data={
-subject:req.body.subject,body:req.body.body
+app.post("/compose",async (req,res)=>{
+if(!convertor._id) return res.redirect("/signin");
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+
+try{
+await client.connect();
+const ourblog=client.db("ourblog");
+const posts=ourblog.collection("posts");
+
+const newPost={
+title:req.body.subject,
+body:req.body.body,
+author:{
+  id:convertor._id,
+  username:convertor.username
+},
+createdAt:new Date()
 };
-posts.push(data);
-  res.render("home",{posts});
-});
+await posts.insertOne(newPost);
+res.redirect("/");
 
-app.get("/posts/:title",(req,res)=>{
-const Title=_.lowerCase(req.params.title);
-const checkData=posts.find(p=>_.lowerCase(p.subject)===Title);
-console.log(checkData);
-if(checkData){
-res.render("postPage",{checkData});
-}
-else{
-  console.log(404);
-}
-});
-
-app.post("/edit",(req,res)=>{
-  const {heading,body}=req.body;
-posts.subject=heading;
-posts.body=body;
-console.log("edit post : ",posts);
-res.render("home",{posts});
-});
-
-app.get("/edits/:title",(req,res)=>{
-  const Title=_.lowerCase(req.params.title);
-  const retrieve=posts.find(p=>_.lowerCase(p.subject)===Title);
-  if(retrieve){
-    console.log("the retrieve value is ",retrieve);
-res.render("edit",{retrieve});
-  }else{
-    console.log(console.dir);
+}catch(err){
+  console.log(err);
+  res.status(500).send("Error saving a post");
   }
+  finally{
+await client.close();
+}
+
+});
+
+app.get("/posts/:id",async (req,res)=>{
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+try{
+  await client.connect();
+const ourblog=client.db("ourblog");
+const postCollection=ourblog.collection("posts");
+const idvalue=new ObjectId(req.params.id);
+const post=await postCollection.findOne({_id:idvalue});
+
+res.render("postPage",{post});
+}catch(err){
+console.log(err);
+}finally{
+await client.close();
+}
+});
+
+app.post("/edit",async (req,res)=>{
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try{
+await client.connect();
+const ourblog=client.db("ourblog");
+const editPostValue=ourblog.collection("posts");
+// make changes to the database
+const {subject,body,editid}=req.body;
+
+const edit= await editPostValue.updateOne({_id:new ObjectId(editid)},{$set:{title:subject,body:body,createdAt:new Date()}});
+
+res.redirect("/");
+  }catch(err){
+console.log(err);
+res.status(500).send("unable to edit the post");
+  }finally{
+await client.close();
+  }
+});
+
+app.get("/edits/:id",async (req,res)=>{
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+try{
+await client.connect();
+const ourblog=client.db("ourblog");
+const postEditing=ourblog.collection("posts");
+// find data to edit
+const fetchData= await postEditing.findOne({_id:new ObjectId(req.params.id)});
+// check if the user wanting to edit is the owner of the content
+if(convertor._id !==fetchData.author.id){
+return res.status(404).send("unable to perform this function you are not the owner !!!");
+}
+res.render("edit",{fetchData});
+
+}catch(err){
+console.log(err);
+res.status(500).send("Error on editing");
+}finally{
+await client.close();
+}
+});
+
+app.get("/delete/:id",async (req,res)=>{
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+try{
+await client.connect();
+const ourblog=client.db("ourblog");
+const postsCollection=ourblog.collection("posts");
+
+const checkItem=await postsCollection.findOne({_id:new ObjectId(req.params.id)});
+// check if the user deleting a post is the owner
+if(convertor._id !== checkItem.author.id) return res.status(403).send("unauthorized access");
+await postsCollection.deleteOne({_id:new ObjectId(req.params.id)});
+
+res.redirect("/");
+}catch(err){
+console.log(err);
+res.status(500).send("Error on deleting an item");
+}finally{
+await client.close();
+}
 });
 
 app.post("/send-email",(req,res)=>{

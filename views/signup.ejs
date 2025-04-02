@@ -1,4 +1,4 @@
-<%-include("header")-%>
+<%- include("header") -%>
   
 
 <div class="icons"style="margin-top:2rem;text-align: center">
@@ -18,10 +18,12 @@
 
 <div class=""style="justify-content:center;align-items:center;display:flex;">
     <form method="post" action="/signup">
+      <small style="color: red;"><%=data%></small>
           <input type="text"name="username" placeholder="Enter your username" class="form-control" autocomplete="off"required>
+          
       <br>
     
-          <input type="text" name="password"placeholder="Enter your password" class="form-control"required>
+          <input type="password" name="password"placeholder="Enter your password" class="form-control"required>
       
        <br>
       <button class="btn btn-primary btn-sm" type="submit">SIGNUP</button>
@@ -32,4 +34,4 @@
     </form>
 </div>
 
-<%-include("footer")-%> 
+<%- include("footer") -%> 
