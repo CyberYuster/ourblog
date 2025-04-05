@@ -18,20 +18,53 @@
 
 <div class=""style="justify-content:center;align-items:center;display:flex;">
     <form method="post" action="/signup">
+    
       <small style="color: red;"><%=data%></small>
-          <input type="text"name="username" placeholder="Enter your username" class="form-control" autocomplete="off"required>
-          
+          <input type="text"name="username" id="username" placeholder="Enter your username" class="form-control" autocomplete="off" required oninput="checkUsernameAvailability()">
+          <small id="usernameHelp" class="form-text"></small>
       <br>
     
           <input type="password" name="password"placeholder="Enter your password" class="form-control"required>
       
        <br>
-      <button class="btn btn-primary btn-sm" type="submit">SIGNUP</button>
+      <button id="registerBtn" class="btn btn-primary btn-sm" type="submit" disabled>SIGNUP</button>
       <br>
       <a href="/signin">you have an account already (login)</a>
       <br>
-      <a href="#">Forgot Password ?</a>
+      <a href="/passwordreset">Forgot Password ?</a>
     </form>
 </div>
-
+<script>
+  async function checkUsernameAvailability() {
+    const username = document.getElementById('username').value;
+    const helpText = document.getElementById('usernameHelp');
+    const registerBtn = document.getElementById('registerBtn');
+    
+    if (username.length < 3) {
+      helpText.textContent = 'Username must be at least 3 characters';
+      helpText.style.color = 'red';
+      registerBtn.disabled = true;
+      return;
+    }
+  
+    try {
+      const response = await fetch(`/api/check-username?username=${encodeURIComponent(username)}`);
+    const data = await response.json();
+    
+    if (data.available) {
+      helpText.textContent = 'Username is available!';
+      helpText.style.color = 'green';
+      registerBtn.disabled = false;
+    } else {
+      helpText.textContent = 'Username already exists!';
+      helpText.style.color = 'red';
+      registerBtn.disabled = true;
+    }
+  } catch (error) {
+    helpText.textContent = 'Error checking username';
+    helpText.style.color = 'red';
+    registerBtn.disabled = true;
+  }
+}
+</script>
 <%- include("footer") -%> 

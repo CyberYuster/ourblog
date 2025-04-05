@@ -1,0 +1,10 @@
+#usernameHelp {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9em;
+  }
+  
+  #registerBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }

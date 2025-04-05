@@ -1,7 +1,15 @@
 <%-include("header")-%>
 <section class="contact-form">
+    
+    <% if (showFlash) { %>
+        <div class="flash-message">
+          <%= messages %>
+        </div>
+      <% } %>
+
     <h2>Contact Developer</h2>
     <form action="/send-email" method="post">
+     
         <div class="form-group">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" autocomplete="off" required>
@@ -17,4 +25,12 @@
         <button type="submit" class="btn">Send Message</button>
     </form>
 </section>
+<% if(redirect){ %> 
+    <script>
+     setTimeout(() => {
+         window.location.href="<%= redirect %>";
+     }, <%= delay %>);
+    </script>
+    <% } %>
+
 <%-include("footer")-%>

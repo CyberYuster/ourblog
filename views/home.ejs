@@ -13,7 +13,7 @@
 
         <div class="actions">  
             <a href="/posts/<%=data._id%>">Read More ...</a>
-            <% if(convertor._id === data.author.id){ %>
+            <% if(users?._id === data.author.id){ %>
             <div class="icons">
                 <!-- <i class="bi bi-pencil-square">a</i>
                 <i class="bi bi-trash3-fill">b</i> -->
@@ -34,7 +34,25 @@
         </div>
         <% }); %>
     </article>
-   
+   <!-- Pagination Controls -->
+
+<div class="pagination">
+  <% if (hasPrevPage) { %>
+    <a href="/?page=1" class="btn btn-first">First</a>
+    <a href="/?page=<%= currentPage - 1 %>" class="btn btn-prev">Previous</a>
+  <% } %>
+  
+  <% for (let i = 1; i <= totalPages; i++) { %>
+    <a href="/?page=<%= i %>" class="btn <%= i === currentPage ? 'active' : '' %>">
+      <%= i %>
+    </a>
+  <% } %>
+  
+  <% if (hasNextPage) { %>
+    <a href="/?page=<%= currentPage + 1 %>" class="btn btn-next">Next</a>
+    <a href="/?page=<%= totalPages %>" class="btn btn-last">Last</a>
+  <% } %>
+</div>
 </section>
 <script>
     async function confirmDelete(postId) {

@@ -10,6 +10,12 @@ const _=require("lodash");
 const { MongoClient,ObjectId} = require("mongodb");
 
 const { OAuth2Client } = require('google-auth-library');
+const bcrypt = require('bcrypt');
+const cookieParser = require('cookie-parser');
+
+// Generate and store reset tokens
+const crypto = require('crypto');
+const resetTokens = new Map(); // In-memory store (use Redis in production)
 
 const client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_CLIENT_SECRETS, // Add your client secret here
@@ -22,6 +28,9 @@ app.use(bodyParser.json());
 app.use(express.urlencoded({extended:true}));
 app.use(express.static("public"));
 app.set('view engine','ejs');
+
+app.use(cookieParser());
+
 
 // let posts=[];
 let loggedUser={};
@@ -39,6 +48,15 @@ app.use(session({
   // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+
+// setting the user session to be used to all middlewares
+app.use((req,res,next)=>{
+  res.locals.users = req.session.users || null;
+  next();
+});
+
+
 
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
@@ -120,8 +138,9 @@ app.get('/auth/facebook/callback',
         loggedUser=await userr.findOne({"accounts.type":"facebook","accounts.facebookId":req.user.facebookId});
 
         convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
-
-        res.render('home',{convertor,allPosts});
+        req.session.users=convertor;
+        // res.render('home',{convertor,allPosts});
+        res.redirect("/");
       }finally{
 await client.close();
       }  
@@ -139,8 +158,19 @@ try{
 const ourblog=client.db("ourblog");
 const postsCollection=ourblog.collection("posts");
 
-allPosts= await postsCollection.find().sort({createdAt:-1}).toArray();
-res.render("home",{convertor,allPosts});
+// Get page number from query (default to 1 if not specified)
+const page = parseInt(req.query.page) || 1;
+const postsPerPage = 5;
+const skip = (page - 1) * postsPerPage;
+
+// Get total count of posts for pagination calculation
+const totalPosts = await postsCollection.countDocuments();
+const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+// Fetch posts with pagination
+allPosts= await postsCollection.find().sort({createdAt:-1}).skip(skip).limit(postsPerPage).toArray();
+req.session.users=convertor;
+res.render("home",{allPosts,currentPage: page,totalPages,hasNextPage: page < totalPages,hasPrevPage: page > 1});
 
 }catch(err){
 console.log(err);
@@ -156,7 +186,7 @@ app.get("/about",(req,res)=>{
 });
 
 app.get("/contact",(req,res)=>{
-res.render("contact");
+res.render("contact",{messages:"",redirect:"",delay:0,showFlash: false});
 });
 
 app.get("/signup",(req,res)=>{
@@ -175,15 +205,17 @@ app.post("/signup",(req,res)=>{
       const user = ourblog.collection('users');
   
       const {password,username}=req.body;
-      console.log("pass,user ",{password,username});
+       // generate a hash to password
+       const saltRounds=10;
+       const hashedPassword=await bcrypt.hash(password,saltRounds);
 
-      let compare=await user.find({username:{ $regex: new RegExp(`^${username}$`, "i") },accounts:[{type:"normal",password:password}]}).toArray();
-      // console.log("compare ",compare);
+      let compare=await user.find({username:{ $regex: new RegExp(`^${username}$`, "i") },accounts:[{type:"normal",password:hashedPassword}]}).toArray();
       if(compare.length>0){
         res.render("signup",{data:"the user already exists, you can not signup !!!"});
         console.log("the user already exists, you can not signup");
       }else{
-        await user.insertOne({username:username,accounts:[{type:"normal",password:password}]});
+       
+        await user.insertOne({username:username,accounts:[{type:"normal",password:hashedPassword}]});
         // res.send("success");
         res.render("signup",{data:"well signed up !!!"});
         console.log("user saved to database successfully");
@@ -206,29 +238,69 @@ app.post("/signin",(req,res)=>{
   async function run() {
     try {
       const {username,password}= req.body;
+// authenticate user
 
       const ourblog = client.db('ourblog');
       const userr = ourblog.collection('users');
 
-      let user_existance=await userr.find({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":password}).toArray();
-     if(user_existance.length>0){
-        console.log("the username already exists, login success");
-        loggedUser=await userr.findOne({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":password});
+      let user_existance=await userr.find({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal"}).toArray();
+      // if the user does not exists
+      if(!(user_existance.length>0)){
+        res.render("signin",{data:"the user does not exist !!!"});
+      }else{
+      // get account details specifically of type normal
+      const normalAccount=user_existance[0].accounts.find(acc=>acc.type==="normal");
+      // get the password to be compared with the user input password
+      const getPassword=normalAccount.password;
+      const checkAuthenticity=await bcrypt.compare(password,getPassword);
+
+      if(checkAuthenticity){
+
+      loggedUser=await userr.findOne({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":getPassword});
 
       convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
- 
-      res.render("home",{convertor,allPosts});
+      req.session.users=convertor;
+      // res.render("home",{user,allPosts});
+      res.redirect("/");
       }
       else{
       console.log("user does not exist");
       res.render("signin",{data:"user does not exist !!!"});
       }
-    } finally {
+    }} finally {
       await client.close();
     }
   }
   run().catch(console.dir);
 
+});
+
+// Username availability check API
+app.get('/api/check-username', async (req, res) => {
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+  try {
+    await client.connect();
+    const ourblog=client.db("ourblog");
+    const userr=ourblog.collection("users");
+
+    const username = req.query.username;
+    
+    if (!username || username.length < 3) {
+      return res.json({ available: false });
+    }
+
+    const user = await userr.findOne({ 
+      username: { $regex: new RegExp(`^${username}$`, "i") }
+    });
+
+    res.json({ available: !user });
+  } catch (err) {
+    console.error('Username check error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }finally{
+await client.close();
+  }
 });
 
 app.get('/auth/google', (req, res) => {
@@ -275,24 +347,23 @@ app.get('/auth/google/callback', async (req, res) => {
         loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
 
         convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
-       console.log("convertor data : ",convertor);
-        res.render("home",{convertor,allPosts});
+      req.session.users=convertor;
+      res.redirect("/");
       }else if(account_check.length>0){
         await userr.updateOne({username:email},{$push:{accounts:{type:"google",GoogleId:sub}}});
         loggedUser=await userr.findOne({username:email,"accounts.type":"facebook"});
 
         convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
-
-        res.render("home",{convertor,allPosts});
+        req.session.users=convertor;
+        res.redirect("/");
       }
       else{
         await userr.insertOne({username:email,accounts:[{type:"google",GoogleId:sub}]});
         loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
 
         convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
-
-        res.render("home",{convertor,allPosts});
-
+        req.session.users=convertor;
+        res.redirect("/");
       }
     } finally {
       await clients.close();
@@ -307,14 +378,15 @@ app.get('/auth/google/callback', async (req, res) => {
 });
 
 app.get("/compose",(req,res)=>{
-  if(!convertor._id){ // checks if the user is logged in 
+  if(!res.locals.users?._id){ // checks if the user is logged in 
    return res.redirect("/signin");
   } 
 res.render("compose");
 });
 
 app.post("/compose",async (req,res)=>{
-if(!convertor._id) return res.redirect("/signin");
+if(!res.locals.users?._id) return res.redirect("/signin");
+
 const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 
@@ -327,8 +399,8 @@ const newPost={
 title:req.body.subject,
 body:req.body.body,
 author:{
-  id:convertor._id,
-  username:convertor.username
+  id:res.locals.users._id,
+  username:res.locals.users.username
 },
 createdAt:new Date()
 };
@@ -394,7 +466,7 @@ const postEditing=ourblog.collection("posts");
 // find data to edit
 const fetchData= await postEditing.findOne({_id:new ObjectId(req.params.id)});
 // check if the user wanting to edit is the owner of the content
-if(convertor._id !==fetchData.author.id){
+if(res.locals.users._id !==fetchData.author.id){
 return res.status(404).send("unable to perform this function you are not the owner !!!");
 }
 res.render("edit",{fetchData});
@@ -417,13 +489,126 @@ const postsCollection=ourblog.collection("posts");
 
 const checkItem=await postsCollection.findOne({_id:new ObjectId(req.params.id)});
 // check if the user deleting a post is the owner
-if(convertor._id !== checkItem.author.id) return res.status(403).send("unauthorized access");
+if(res.locals.users?._id !== checkItem.author.id) return res.status(403).send("unauthorized access");
 await postsCollection.deleteOne({_id:new ObjectId(req.params.id)});
 
 res.redirect("/");
 }catch(err){
 console.log(err);
 res.status(500).send("Error on deleting an item");
+}finally{
+await client.close();
+}
+});
+
+app.post("/logout",(req,res)=>{
+  req.session.destroy();
+    res.redirect("/");
+
+});
+
+app.get("/passwordreset",(req,res)=>{
+res.render("resertpasswordrequest");
+});
+
+app.get("/reset-password",(req,res)=>{
+res.render("reset-password",{token:req.query.token});
+});
+
+// Route to initiate password reset
+app.post('/request-password-reset', async (req, res) => {
+  const { username } = req.body;
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+    const db=client.db("ourblog");
+    const user = await db.collection('users').findOne({ 
+      username: { $regex: new RegExp(`^${username}$`, 'i') },
+      "accounts.type": "normal"
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Generate a unique token
+    const token = crypto.randomBytes(32).toString('hex');
+    resetTokens.set(token, {
+      username: user.username,
+      expiresAt: Date.now() + 3600000 // 1 hour expiration
+    });
+
+    // In a real app, you'd send this link via SMS or other method
+    const resetLink = `http://${req.headers.host}/reset-password?token=${token}`;
+    
+    res.json({ 
+      message: "Password reset initiated",
+      resetLink // For demonstration (in production, don't return this)
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }finally{
+    await client.close();
+  }
+});
+
+// Route to actually reset password
+app.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+    const db=client.db("ourblog");
+    // Verify token
+    const tokenData = resetTokens.get(token);
+    if (!tokenData || tokenData.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "Invalid or expired token" });
+    }
+
+    // Update password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.collection('users').updateOne(
+      { username: tokenData.username, "accounts.type": "normal" },
+      { $set: { "accounts.$.password": hashedPassword } }
+    );
+
+    // Clear token
+    resetTokens.delete(token);
+    
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Password reset failed" });
+  }finally{
+    await client.close();
+  }
+});
+
+app.get("/api/search",async (req,res)=>{
+const uri="mongodb://127.0.0.1/27017";
+const client=new MongoClient(uri);
+try{
+await client.connect();
+const ourblog=client.db("ourblog");
+const searchTerm = req.query.q;
+    if (!searchTerm || searchTerm.trim() === '') {
+      return res.json([]);
+    }
+
+    const posts = await ourblog.collection('posts').find({
+      $or: [
+        { title: { $regex: searchTerm, $options: 'i' } },
+        { body: { $regex: searchTerm, $options: 'i' } },
+        {"author.username":{$regex: searchTerm, $options: 'i'}}
+      ]
+    }).limit(10).toArray();
+
+    res.json(posts);
+
+}catch(err){
+console.error("search error : ",err);
+res.status(500).send("searching failed");
 }finally{
 await client.close();
 }
@@ -455,7 +640,8 @@ app.post("/send-email",(req,res)=>{
         } else {
             name=""; email=""; message= "";
             console.log('Email sent:', info.response);
-            res.send('Thank you for contacting us! We will get back to you soon.');
+         
+            res.render("contact",{messages:"Thank you for contacting us! We will get back to you soon.",redirect:"/contact",delay:3000,showFlash: true});
         }
     });
 });
