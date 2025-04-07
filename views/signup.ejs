@@ -13,14 +13,17 @@
     </div>
   </div>
 </div>
-<h6 style="text-align: center;" class="mt-4">OR</h6>
+<h6 style="text-align: center;" class="mt-4">OR <br>(make sure you remember your username !!!)<br></h6>
 <!-- <h8 style="text-align: center;">(if you don't have an email or password) sign up here</h8> -->
-
 <div class=""style="justify-content:center;align-items:center;display:flex;">
     <form method="post" action="/signup">
     
       <small style="color: red;"><%=data%></small>
-          <input type="text"name="username" id="username" placeholder="Enter your username" class="form-control" autocomplete="off" required oninput="checkUsernameAvailability()">
+      <input type="text"name="displayname" id="displayname" placeholder="Enter unique display name" class="form-control" autocomplete="off" required oninput="checkDisplaynameAvailability()">
+          <small id="displaynameHelp" class="form-text"></small>
+      <br>
+
+          <input type="text"name="username" id="username" placeholder="Enter unique username" class="form-control" autocomplete="off" required oninput="checkUsernameAvailability()">
           <small id="usernameHelp" class="form-text"></small>
       <br>
     
@@ -35,6 +38,18 @@
     </form>
 </div>
 <script>
+
+// Track the validity of both fields
+let isUsernameValid = false;
+let isDisplaynameValid = false;
+
+
+
+function updateRegisterButton() {
+  const registerBtn = document.getElementById('registerBtn');
+  registerBtn.disabled = !(isUsernameValid && isDisplaynameValid);
+}
+
   async function checkUsernameAvailability() {
     const username = document.getElementById('username').value;
     const helpText = document.getElementById('usernameHelp');
@@ -43,7 +58,8 @@
     if (username.length < 3) {
       helpText.textContent = 'Username must be at least 3 characters';
       helpText.style.color = 'red';
-      registerBtn.disabled = true;
+      isUsernameValid=false;
+      updateRegisterButton();
       return;
     }
   
@@ -54,17 +70,82 @@
     if (data.available) {
       helpText.textContent = 'Username is available!';
       helpText.style.color = 'green';
-      registerBtn.disabled = false;
+      isUsernameValid=true;
     } else {
       helpText.textContent = 'Username already exists!';
       helpText.style.color = 'red';
-      registerBtn.disabled = true;
+      isUsernameValid=false;
     }
   } catch (error) {
     helpText.textContent = 'Error checking username';
     helpText.style.color = 'red';
-    registerBtn.disabled = true;
+    isUsernameValid = false;
+  }
+  updateRegisterButton();
+
+  // Re-check display name in case it resembles the new username
+  const displayname = document.getElementById('displayname').value;
+  if (displayname) {
+    checkDisplaynameAvailability();
   }
 }
+
+
+async function checkDisplaynameAvailability() {
+    const displayname = document.getElementById('displayname').value;
+    const helpText = document.getElementById('displaynameHelp');
+    const username = document.getElementById('username').value;
+
+// Reset validation
+isDisplaynameValid = false;
+  updateRegisterButton();
+
+    if (displayname.length < 3) {
+      helpText.textContent = 'display name must be at least 3 characters';
+      helpText.style.color = 'red';
+      // isDisplaynameValid = false;
+      // updateRegisterButton();
+      return;
+    }
+
+    // Check if display name resembles username
+  if (username && displayname.toLowerCase().includes(username.toLowerCase())) {
+    helpText.textContent = 'Display name should not resemble username!';
+    helpText.style.color = 'red';
+    return;
+  }
+
+  // Check for at least 1 letter, 1 number, and 1 special character
+  const hasLetter = /[a-zA-Z]/.test(displayname);
+  const hasNumber = /[0-9]/.test(displayname);
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(displayname);
+
+  if (!hasLetter || !hasNumber || !hasSpecialChar) {
+    helpText.textContent = 'Must contain 1 letter, 1 number, and 1 special character (!@#$%^&*)';
+    helpText.style.color = 'red';
+    return;
+  }
+  
+    try {
+      const response = await fetch(`/api/check-displayname?displayname=${encodeURIComponent(displayname)}`);
+    const data = await response.json();
+    
+    if (data.available) {
+      helpText.textContent = 'display name is available!';
+      helpText.style.color = 'green';
+      isDisplaynameValid=true;
+    } else {
+      helpText.textContent = 'display name already exists!';
+      helpText.style.color = 'red';
+      isDisplaynameValid=false;
+    }
+  } catch (error) {
+    helpText.textContent = 'Error checking displayname';
+    helpText.style.color = 'red';
+    isDisplaynameValid=false;
+  }
+  updateRegisterButton();
+}
+
 </script>
 <%- include("footer") -%> 

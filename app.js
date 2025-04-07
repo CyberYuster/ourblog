@@ -9,13 +9,16 @@ const nodemailer=require("nodemailer");
 const _=require("lodash");
 const { MongoClient,ObjectId} = require("mongodb");
 
-const { OAuth2Client } = require('google-auth-library');
+const { OAuth2Client, ClientAuthentication } = require('google-auth-library');
 const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
 
 // Generate and store reset tokens
 const crypto = require('crypto');
 const resetTokens = new Map(); // In-memory store (use Redis in production)
+
+const rateLimit = require('express-rate-limit');
+
 
 const client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_CLIENT_SECRETS, // Add your client secret here
@@ -57,6 +60,15 @@ app.use((req,res,next)=>{
 });
 
 
+// Allow 3 password-reset attempts per 15 minutes
+const resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 3,                   // Max 3 requests
+   
+  message: "Too many attempts. Try again later."
+});
+
+app.use('/request-password-reset', resetLimiter);
 
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
@@ -87,17 +99,18 @@ passport.use(new FacebookStrategy({
       const userr = ourblog.collection('users');
 
       let compare=await userr.find({username:user.email,"accounts.type":"facebook"}).toArray();
-      console.log("compare from FB ",compare);
+      // console.log("compare from FB ",compare);
 
       if(compare.length>0){
-        console.log("the username already exists, please create another one unique");
+        console.log("the username already is registered, enjoy our services");
         // res.render("home",{posts});
       }else if(account_check.length>0){
         await userr.updateOne({username:user.email},{$push:{accounts:{type:"facebook",facebookId:user.facebookId}}});
         // res.render("home",{posts});
       }
       else{
-        await userr.insertOne({username:user.email,accounts:[{type:"facebook",facebookId:user.facebookId}]});
+        const displayname=user.email.split("@")[0];
+        await userr.insertOne({displayName:displayname,username:user.email,accounts:[{type:"facebook",facebookId:user.facebookId}]});
         console.log("successfully saved data from FB to the DB");
         // res.render("home",{posts});
       }
@@ -137,7 +150,7 @@ app.get('/auth/facebook/callback',
         const userr = ourblog.collection('users');
         loggedUser=await userr.findOne({"accounts.type":"facebook","accounts.facebookId":req.user.facebookId});
 
-        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+        convertor={_id:loggedUser._id.toString(),displayName:String(loggedUser.displayName),username:String(loggedUser.username),accounts:loggedUser.accounts};
         req.session.users=convertor;
         // res.render('home',{convertor,allPosts});
         res.redirect("/");
@@ -204,18 +217,18 @@ app.post("/signup",(req,res)=>{
       const ourblog = client.db('ourblog');
       const user = ourblog.collection('users');
   
-      const {password,username}=req.body;
+      const {password,username,displayname}=req.body;
        // generate a hash to password
        const saltRounds=10;
        const hashedPassword=await bcrypt.hash(password,saltRounds);
 
-      let compare=await user.find({username:{ $regex: new RegExp(`^${username}$`, "i") },accounts:[{type:"normal",password:hashedPassword}]}).toArray();
+      let compare=await user.find({username:{ $regex: new RegExp(`^${username}$`, "i") },displayName:{ $regex: new RegExp(`^${displayname}$`, "i") },accounts:[{type:"normal",password:hashedPassword}]}).toArray();
       if(compare.length>0){
         res.render("signup",{data:"the user already exists, you can not signup !!!"});
         console.log("the user already exists, you can not signup");
       }else{
        
-        await user.insertOne({username:username,accounts:[{type:"normal",password:hashedPassword}]});
+        await user.insertOne({displayName:displayname,username:username,accounts:[{type:"normal",password:hashedPassword}]});
         // res.send("success");
         res.render("signup",{data:"well signed up !!!"});
         console.log("user saved to database successfully");
@@ -258,7 +271,7 @@ app.post("/signin",(req,res)=>{
 
       loggedUser=await userr.findOne({username:{ $regex: new RegExp(`^${username}$`, "i") },"accounts.type":"normal","accounts.password":getPassword});
 
-      convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+      convertor={_id:loggedUser._id.toString(),displayName:String(loggedUser.displayName),username:String(loggedUser.username),accounts:loggedUser.accounts};
       req.session.users=convertor;
       // res.render("home",{user,allPosts});
       res.redirect("/");
@@ -290,14 +303,50 @@ const client=new MongoClient(uri);
       return res.json({ available: false });
     }
 
-    const user = await userr.findOne({ 
-      username: { $regex: new RegExp(`^${username}$`, "i") }
-    });
-
-    res.json({ available: !user });
+    const user = await userr.find({ 
+    
+      $text:{
+        $search:username,
+        $caseSensitive:false,
+        $diacriticSensitive:false
+      }
+      
+    }).toArray();
+const SearchItem=user.length===0?"":user;
+    res.json({ available: !SearchItem });
   } catch (err) {
     console.error('Username check error:', err);
     res.status(500).json({ error: 'Server error' });
+  }finally{
+await client.close();
+  }
+});
+
+app.get("/api/check-displayname",async (req,res)=>{
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try{
+await client.connect();
+const db=client.db("ourblog");
+const display=db.collection("users");
+const displayname = req.query.displayname;
+if (!displayname || displayname.length < 3) {
+  return res.json({ available: false });
+}
+const displayNames= await display.find({
+
+  $text:{
+    $search:displayname,
+    $caseSensitive:false,
+    $diacriticSensitive:false
+  }
+}).toArray();
+const mydisplay= displayNames.length === 0 ? "" : displayNames;
+res.json({available:!mydisplay});
+
+  }catch(err){
+console.error("error on checking displayname ",err);
+res.status(500).send("Error occured in displaying name");
   }finally{
 await client.close();
   }
@@ -341,27 +390,29 @@ app.get('/auth/google/callback', async (req, res) => {
       let compare=await userr.find({username:email,"accounts.type":"google"}).toArray();
      
       let account_check=await userr.find({username:email,"accounts.type":"facebook"}).toArray();
-      
+
+      const displayname=email.split("@")[0];
       if(compare.length>0){
         console.log("the username already exists, please create another one unique");
         loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
 
-        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+        convertor={_id:loggedUser._id.toString(),displayName:displayname,username:String(loggedUser.username),accounts:loggedUser.accounts};
       req.session.users=convertor;
       res.redirect("/");
       }else if(account_check.length>0){
         await userr.updateOne({username:email},{$push:{accounts:{type:"google",GoogleId:sub}}});
         loggedUser=await userr.findOne({username:email,"accounts.type":"facebook"});
 
-        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+        convertor={_id:loggedUser._id.toString(),displayName:displayname,username:String(loggedUser.username),accounts:loggedUser.accounts};
         req.session.users=convertor;
         res.redirect("/");
       }
       else{
-        await userr.insertOne({username:email,accounts:[{type:"google",GoogleId:sub}]});
+        
+        await userr.insertOne({ displayName:displayname,username:email,accounts:[{type:"google",GoogleId:sub}]});
         loggedUser=await userr.findOne({username:email,"accounts.type":"google"});
 
-        convertor={_id:loggedUser._id.toString(),username:String(loggedUser.username),accounts:loggedUser.accounts};
+        convertor={_id:loggedUser._id.toString(),displayName:displayname,username:String(loggedUser.username),accounts:loggedUser.accounts};
         req.session.users=convertor;
         res.redirect("/");
       }
@@ -400,7 +451,7 @@ title:req.body.subject,
 body:req.body.body,
 author:{
   id:res.locals.users._id,
-  username:res.locals.users.username
+  owner:res.locals.users.displayName
 },
 createdAt:new Date()
 };
@@ -445,7 +496,7 @@ const editPostValue=ourblog.collection("posts");
 // make changes to the database
 const {subject,body,editid}=req.body;
 
-const edit= await editPostValue.updateOne({_id:new ObjectId(editid)},{$set:{title:subject,body:body,createdAt:new Date()}});
+await editPostValue.updateOne({_id:new ObjectId(editid)},{$set:{title:subject,body:body,createdAt:new Date()}});
 
 res.redirect("/");
   }catch(err){
@@ -540,8 +591,11 @@ app.post('/request-password-reset', async (req, res) => {
     });
 
     // In a real app, you'd send this link via SMS or other method
-    const resetLink = `http://${req.headers.host}/reset-password?token=${token}`;
+   
+      const resetLink= `http://${req.headers.host}/reset-password?token=${token}`;
+   
     
+    // const resetLink
     res.json({ 
       message: "Password reset initiated",
       resetLink // For demonstration (in production, don't return this)

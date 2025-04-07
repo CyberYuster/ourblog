@@ -5,7 +5,7 @@
         <% allPosts.forEach((data)=>{ %>
 
         <h3><%= data.title %></h3>
-        <small class="text-body-secondary">created by : <%= data.author.username %></small>
+        <small class="text-body-secondary">created by : <%= data.author.owner %></small>
         <p><%= data.body.slice(0,200) %>...
             <br>
             <small class="text-body-secondary">last update : <%= data.createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) %></small>
