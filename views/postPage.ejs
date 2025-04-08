@@ -1,4 +1,10 @@
 <%-include("header")-%>
-<h1><%=post.title%></h1>
+<% if(post.image){ %>
+    <img src="/uploads/<%= post.image %>" style="width: 19rem;height:19rem;display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 50%;" class="center" alt="Post image">
+<% } %>
+<h1 style="text-align: center;"><%=post.title%></h1>
 <p><%=post.body%></p>
 <%-include("footer")-%>

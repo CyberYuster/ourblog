@@ -1,5 +1,9 @@
 require('dotenv').config();
 const express=require('express');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+// const router=express.Router();
 const ejs=require("ejs");
 const bodyParser=require("body-parser");
 const passport=require("passport");
@@ -20,6 +24,7 @@ const resetTokens = new Map(); // In-memory store (use Redis in production)
 const rateLimit = require('express-rate-limit');
 
 
+
 const client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_CLIENT_SECRETS, // Add your client secret here
     process.env.GOOGLE_CALLBACK_URI
@@ -35,7 +40,6 @@ app.set('view engine','ejs');
 app.use(cookieParser());
 
 
-// let posts=[];
 let loggedUser={};
 let convertor={};
 
@@ -62,13 +66,52 @@ app.use((req,res,next)=>{
 
 // Allow 3 password-reset attempts per 15 minutes
 const resetLimiter = rateLimit({
+  // windowMs: 15 * 60 * 1000, // 15 minutes
+  // max: 3,                   // Max 3 requests
+   
+  // message: "Too many attempts. Try again later."
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 3,                   // Max 3 requests
-   
-  message: "Too many attempts. Try again later."
+  handler: (req, res) => {  // Custom handler
+    res.status(429).json({ 
+      error: "Too many password reset attempts. Please try again later after 15 minutes." 
+    });
+  },
+  standardHeaders: true,     // Return rate limit info in headers
+  legacyHeaders: false       // Disable deprecated headers
 });
 
 app.use('/request-password-reset', resetLimiter);
+
+// Configure storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/uploads/'); // Create this directory
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// File filter to only allow images
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only JPEG, PNG, and GIF images are allowed'), false);
+  }
+};
+
+// Configure upload middleware
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 1024 * 1024 // 1MB limit
+  }
+});
 
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
@@ -435,7 +478,7 @@ app.get("/compose",(req,res)=>{
 res.render("compose");
 });
 
-app.post("/compose",async (req,res)=>{
+app.post("/compose",upload.single('image'),async (req,res)=>{
 if(!res.locals.users?._id) return res.redirect("/signin");
 
 const uri="mongodb://127.0.0.1/27017";
@@ -455,6 +498,11 @@ author:{
 },
 createdAt:new Date()
 };
+// Only add image field if a file was uploaded
+if (req.file) {
+  newPost.image =req.file.filename;
+}
+
 await posts.insertOne(newPost);
 res.redirect("/");
 
@@ -486,17 +534,63 @@ await client.close();
 }
 });
 
-app.post("/edit",async (req,res)=>{
+app.post("/edit",upload.single('image'),async (req,res)=>{
   const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try{
 await client.connect();
 const ourblog=client.db("ourblog");
-const editPostValue=ourblog.collection("posts");
+const posts=ourblog.collection("posts");
 // make changes to the database
 const {subject,body,editid}=req.body;
 
-await editPostValue.updateOne({_id:new ObjectId(editid)},{$set:{title:subject,body:body,createdAt:new Date()}});
+// Get the existing post first
+const existingPost = await posts.findOne({ 
+  _id: new ObjectId(editid)
+});
+
+if (!existingPost) {
+  return res.status(404).send("Post not found or unauthorized");
+}
+
+const updateData = {
+  title: subject,
+  body: body,
+  updatedAt: new Date()
+};
+
+ // Handle image update
+ if (req.file) {
+  updateData.image = req.file.filename;
+  
+  // Delete old image if it exists
+  if (existingPost.image) {
+      const fs = require('fs');
+      const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
+      // console.log("old image path : ",oldImagePath);
+      if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+      }
+  }
+} else if (req.body.removeImage === 'true') {
+  // Handle image removal
+  if (existingPost.image) {
+    const fs = require('fs');
+    const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
+    
+    if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+    }
+}
+}
+
+await posts.updateOne(
+  { _id: new ObjectId(editid) },
+  { $set: updateData }
+);
+
+
+// await editPostValue.updateOne({_id:new ObjectId(editid)},{$set:{title:subject,body:body,createdAt:new Date()}});
 
 res.redirect("/");
   }catch(err){
@@ -541,6 +635,20 @@ const postsCollection=ourblog.collection("posts");
 const checkItem=await postsCollection.findOne({_id:new ObjectId(req.params.id)});
 // check if the user deleting a post is the owner
 if(res.locals.users?._id !== checkItem.author.id) return res.status(403).send("unauthorized access");
+
+// delete the image storage
+if(checkItem.image){
+  const imagePath = path.join(process.cwd(), 'public','uploads', checkItem.image);
+            
+  if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+      console.log(`Deleted image: ${checkItem.image}`);
+  } else {
+      console.log(`Image not found: ${checkItem.image}`);
+  }
+}
+
+// delete post from mongo database
 await postsCollection.deleteOne({_id:new ObjectId(req.params.id)});
 
 res.redirect("/");

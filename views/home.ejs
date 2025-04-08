@@ -4,7 +4,14 @@
     <article>
         <% allPosts.forEach((data)=>{ %>
 
-        <h3><%= data.title %></h3>
+        <h3 style="text-align: center;"><%= data.title %></h3>
+        <% if (data.image) { %>
+          <img src="/uploads/<%= data.image %>" style="width: 19rem;height:19rem;display: block;
+          margin-left: auto;
+          margin-right: auto;
+          width: 50%;" class="img-fluid" alt="Post image">
+        <% } %>
+        <br>
         <small class="text-body-secondary">created by : <%= data.author.owner %></small>
         <p><%= data.body.slice(0,200) %>...
             <br>
@@ -33,6 +40,7 @@
             <% } %>
         </div>
         <% }); %>
+        
     </article>
    <!-- Pagination Controls -->
 

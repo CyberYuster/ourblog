@@ -1,5 +1,5 @@
 <%-include("header")-%>
-<form method="post" action="/edit">
+<form method="post" action="/edit" enctype="multipart/form-data">
   
 <div class="form-group">
     <label for="subject">Post Title:</label>
@@ -10,6 +10,29 @@
     <textarea id="body" name="body" rows="10" required><%=fetchData.body%></textarea>
 </div>
 <input type="hidden" name="editid" value="<%=fetchData._id%>">
+
+<div class="form-group">
+    <label>Current Image:</label>
+    <% if (fetchData.image) { %>
+        <div class="current-image">
+            <img src="/uploads/<%= fetchData.image %>" style="max-width: 200px; display: block;">
+            <label>
+                <input type="checkbox" name="removeImage" value="true"> Remove current image
+            </label>
+        </div>
+    <% } else { %>
+        <p>No image currently attached</p>
+    <% } %>
+</div>
+
+<div class="form-group">
+    <label for="image">Upload New Image (optional, max 1MB):</label>
+    <input type="file" name="image" id="image" accept="image/*" class="form-control-file">
+    <small class="text-muted">Only JPEG, PNG, or GIF. Will replace current image if one exists.</small>
+    <div id="imagePreview" style="margin-top: 10px;"></div>
+    <div id="imageError" class="text-danger"></div>
+</div>
+
 <button class="btn btn-primary" type="submit">EDIT</button>
 </form>
 <%-include("footer")-%>
