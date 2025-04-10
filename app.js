@@ -23,6 +23,7 @@ const resetTokens = new Map(); // In-memory store (use Redis in production)
 
 const rateLimit = require('express-rate-limit');
 
+// const commentRoutes = require('./routes/comments');
 
 
 const client = new OAuth2Client(
@@ -52,6 +53,18 @@ app.use(session({
     cookie: { secure: false } // Set to true if using HTTPS
   }));
 
+  app.use((req, res, next) => {
+    // Check for your specific session user variable
+    if (req.session.users) {
+      res.set({
+        'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+    }
+    next();
+  });
+
   // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
@@ -60,6 +73,7 @@ app.use(passport.session());
 // setting the user session to be used to all middlewares
 app.use((req,res,next)=>{
   res.locals.users = req.session.users || null;
+
   next();
 });
 
@@ -113,6 +127,13 @@ const upload = multer({
   }
 });
 
+app.get('/api/auth/status', (req, res) => {
+  res.json({
+    authenticated: !!req.session.user,
+    user: req.session.user || null
+  });
+});
+
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
     clientSecret: process.env.FACEBOOK_CLIENT_SECRETS, // Replace with your Facebook App Secret
@@ -142,7 +163,8 @@ passport.use(new FacebookStrategy({
       const userr = ourblog.collection('users');
 
       let compare=await userr.find({username:user.email,"accounts.type":"facebook"}).toArray();
-      // console.log("compare from FB ",compare);
+     
+      let account_check=await userr.find({username:user.email,"accounts.type":"google"}).toArray();
 
       if(compare.length>0){
         console.log("the username already is registered, enjoy our services");
@@ -194,6 +216,7 @@ app.get('/auth/facebook/callback',
         loggedUser=await userr.findOne({"accounts.type":"facebook","accounts.facebookId":req.user.facebookId});
 
         convertor={_id:loggedUser._id.toString(),displayName:String(loggedUser.displayName),username:String(loggedUser.username),accounts:loggedUser.accounts};
+        console.log("facebook logged details : ",convertor);
         req.session.users=convertor;
         // res.render('home',{convertor,allPosts});
         res.redirect("/");
@@ -206,6 +229,159 @@ await client.close();
   }
 );
 
+// comments area
+
+
+// POST route for adding comments
+app.post('/posts/:id/comments', async (req, res) => {
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+      const postId = req.params.id;
+      const { author, content } = req.body;
+      
+      const commentsCollection = client.db("ourblog").collection("comments");
+      
+      const newComment = {
+          postId: new ObjectId(postId),
+          author,
+          content,
+          createdAt: new Date()
+      };
+      
+      await commentsCollection.insertOne(newComment);
+      // res.redirect('back');
+      res.redirect(req.get("Referrer") || "/");
+  } catch (err) {
+      console.error(err);
+      res.status(500).send("Error adding comment");
+  }finally{
+    await client.close();
+  }
+});
+
+// GET route to fetch comments for a post
+app.get('/posts/:id/comments', async (req, res) => {
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+      const postId = req.params.id;
+
+      const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 2;
+        const skip = (page - 1) * limit;
+      
+      const commentsCollection = client.db("ourblog").collection("comments");
+      
+      // Get total count of comments for this post
+      const total = await commentsCollection.countDocuments({
+        postId: new ObjectId(postId),
+        parentId: { $exists: false }
+    });
+    const pages = Math.ceil(total / limit);
+      const comments = await commentsCollection.find({
+          postId: new ObjectId(postId),
+          parentId: { $exists: false }
+      }).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray();
+
+     const currentUser=res.locals.users;
+       // Add canEdit flag (you might want to implement proper auth)
+       const commentsWithEditFlag = comments.map(comment => ({
+        ...comment,
+        // canEdit: true // In a real app, check if current user is the author
+       canEdit: currentUser && (currentUser.displayName === comment.author)
+    }));
+
+      res.json({comments:commentsWithEditFlag,total,page,pages});
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error fetching comments" });
+  }finally{
+await client.close();
+  }
+});
+
+// POST comment reply
+app.post('/posts/:postId/comments/:commentId/replies', async (req, res) => {
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+      const { postId, commentId } = req.params;
+      const { author, content } = req.body;
+      
+      const commentsCollection = client.db("ourblog").collection("comments");
+      
+      const reply = {
+          _id: new ObjectId(),
+          author,
+          content,
+          createdAt: new Date(),
+          parentId: new ObjectId(commentId)
+      };
+      
+      // Add reply to the parent comment
+      await commentsCollection.updateOne(
+        { _id: new ObjectId(commentId) },
+        { $push: { replies: reply } }
+    );
+    
+    res.status(201).json(reply);
+} catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error adding reply" });
+}finally{
+  await client.close();
+}
+});
+// UPDATE comment
+app.put('/comments/:commentId', async (req, res) => {
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+      const { commentId } = req.params;
+      const { content } = req.body;
+      
+      const commentsCollection = client.db("ourblog").collection("comments");
+      
+      await commentsCollection.updateOne(
+          { _id: new ObjectId(commentId) },
+          { $set: { content, updatedAt: new Date() } }
+      );
+      
+      res.status(200).json({ success: true });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error updating comment" });
+    }finally{
+      await client.close();
+    }
+});
+
+// DELETE comment
+app.delete('/comments/:commentId', async (req, res) => {
+  const uri="mongodb://127.0.0.1/27017";
+  const client=new MongoClient(uri);
+  try {
+    await client.connect();
+      const { commentId } = req.params;
+      
+      const commentsCollection = client.db("ourblog").collection("comments");
+      
+      // Delete comment or just mark as deleted
+      await commentsCollection.deleteOne({ _id: new ObjectId(commentId) });
+      
+      res.status(200).json({ success: true });
+  } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Error deleting comment" });
+  }finally{
+    await client.close();
+  }
+});
 
 app.get("/",async (req,res)=>{
 const uri="mongodb://127.0.0.1/27017";
@@ -213,6 +389,7 @@ const client=new MongoClient(uri);
 try{
 const ourblog=client.db("ourblog");
 const postsCollection=ourblog.collection("posts");
+// const commentsCollection = ourblog.collection('comments');
 
 // Get page number from query (default to 1 if not specified)
 const page = parseInt(req.query.page) || 1;
@@ -226,6 +403,7 @@ const totalPages = Math.ceil(totalPosts / postsPerPage);
 // Fetch posts with pagination
 allPosts= await postsCollection.find().sort({createdAt:-1}).skip(skip).limit(postsPerPage).toArray();
 req.session.users=convertor;
+
 res.render("home",{allPosts,currentPage: page,totalPages,hasNextPage: page < totalPages,hasPrevPage: page > 1});
 
 }catch(err){
@@ -661,8 +839,36 @@ await client.close();
 });
 
 app.post("/logout",(req,res)=>{
-  req.session.destroy();
-    res.redirect("/");
+
+req.session.regenerate(err => {
+  if (err) {
+    console.error('Session regeneration error:', err);
+    return res.status(500).json({ error: 'Logout failed' });
+  }
+
+  // Clear the session cookie with strict options
+  res.clearCookie('connect.sid', {
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // Use secure in production
+    sameSite: 'strict',
+    maxAge: 0 // Immediately expire
+  });
+  // Clear any other auth cookies you might have
+  res.clearCookie('userData', { path: '/' });
+
+  // Add cache control headers
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
+  // For API clients
+  if (req.accepts('json')) {
+    return res.json({ success: true });
+  }
+  // For web browsers - force a hard redirect
+  res.redirect(302, '/?logout=' + Date.now());
+});
 
 });
 

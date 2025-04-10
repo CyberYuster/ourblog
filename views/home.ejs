@@ -3,7 +3,7 @@
     <h2>Latest Posts</h2>
     <article>
         <% allPosts.forEach((data)=>{ %>
-
+          <div class="post" data-post-id="<%= data._id %>">
         <h3 style="text-align: center;"><%= data.title %></h3>
         <% if (data.image) { %>
           <img src="/uploads/<%= data.image %>" style="width: 19rem;height:19rem;display: block;
@@ -20,6 +20,48 @@
 
         <div class="actions">  
             <a href="/posts/<%=data._id%>">Read More ...</a>
+
+            <div class="comments-section">
+              <div class="comments-header">
+                <h4>
+                    <span class="comments-count">0</span> Comments
+                    <button class="toggle-comments" aria-label="Toggle comments">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </h4>
+            </div>
+    <div class="comments-container" id="comments-<%= data._id %>" style="display: none;">
+        <!-- Comments will be loaded here via JavaScript -->
+        <div class="comments-list"></div>
+        <div class="comments-pagination">
+            <button class="load-more-btn" style="display: none;">Load More Comments</button>
+            <div class="loading-indicator" style="display: none;">Loading...</div>
+        </div>
+    </div>
+    <%if (users?._id != data.author.id) { %>
+              <% if (users?._id) { %>
+                <div class="comment-form-container">
+                <form class="comment-form">
+                  <h4>Add a Comment</h4>
+                  <input type="hidden" id="post-id" name="postId" value="<%= data._id %>">
+                  <!-- <div>
+                      <label for="author">Name:</label>
+                      
+                  </div> -->
+                  <input type="hidden" id="author" name="author" value="<%=users.displayName%>" required>
+                  <div>
+                      <label for="content">Comment:</label>
+                      <textarea id="content" name="content" placeholder="write comments here..." required></textarea>
+                  </div>
+                  <button type="submit" class="submit-btn">Submit Comment</button>
+              </form>
+            </div>
+              <% } else { %>
+                <p><a href="/signup">Sign in</a> to leave a comment</p>
+              <% } %>
+              <% } %>
+              </div>
+            
             <% if(users?._id === data.author.id){ %>
             <div class="icons">
                 <!-- <i class="bi bi-pencil-square">a</i>
@@ -38,9 +80,54 @@
                 </a>
             </div>
             <% } %>
+           
         </div>
-        <% }); %>
+        <!-- <hr> -->
+         <img src="picha/10578806.png" style="width: 19rem;height:19rem;display: block;
+         margin-left: auto;
+         margin-right: auto;
+         width: 50%;">
+          </div>
+          <% }); %>
         
+<!-- Reply Modal (hidden by default) -->
+<div class="modal" id="replyModal">
+  <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h3>Reply to Comment</h3>
+      <% if(users?._id){ %>
+      <form id="replyForm">
+          <input type="hidden" id="replyToPostId">
+          <input type="hidden" id="replyToCommentId">
+          
+              <input type="hidden" id="replyAuthor" value="<%=users.displayName%>" required>
+          
+          <div class="form-group">
+              <textarea id="replyContent" placeholder="Write your reply..." required></textarea>
+          </div>
+          <button type="submit" class="submit-btn">Post Reply</button>
+        </form>
+        <% } %>
+      </div>
+  </div>
+  
+
+  <!-- Edit Modal (hidden by default) -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h3>Edit Comment</h3>
+      <form id="editForm">
+          <input type="hidden" id="editCommentId">
+          <div class="form-group">
+              <textarea id="editContent" required></textarea>
+          </div>
+          <button type="submit" class="submit-btn">Update Comment</button>
+      </form>
+  </div>
+</div>
+
+
     </article>
    <!-- Pagination Controls -->
 
