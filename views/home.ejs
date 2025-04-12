@@ -24,7 +24,7 @@
             <div class="comments-section">
               <div class="comments-header">
                 <h4>
-                    <span class="comments-count">0</span> Comments
+                    <span class="comments-count"><%= data.commentCount || 0 %></span> Comments
                     <button class="toggle-comments" aria-label="Toggle comments">
                         <i class="fas fa-chevron-down"></i>
                     </button>
@@ -38,8 +38,8 @@
             <div class="loading-indicator" style="display: none;">Loading...</div>
         </div>
     </div>
-    <%if (users?._id != data.author.id) { %>
-              <% if (users?._id) { %>
+    <%if (currentUser._id != data.author.id) { %>
+              <% if (currentUser?._id) { %>
                 <div class="comment-form-container">
                 <form class="comment-form">
                   <h4>Add a Comment</h4>
@@ -48,7 +48,7 @@
                       <label for="author">Name:</label>
                       
                   </div> -->
-                  <input type="hidden" id="author" name="author" value="<%=users.displayName%>" required>
+                  <input type="hidden" id="author" name="author" value="<%=currentUser.displayName%>" required>
                   <div>
                       <label for="content">Comment:</label>
                       <textarea id="content" name="content" placeholder="write comments here..." required></textarea>
@@ -62,7 +62,7 @@
               <% } %>
               </div>
             
-            <% if(users?._id === data.author.id){ %>
+            <% if(isAuthenticated && currentUser._id === data.author.id){ %>
             <div class="icons">
                 <!-- <i class="bi bi-pencil-square">a</i>
                 <i class="bi bi-trash3-fill">b</i> -->
@@ -95,12 +95,12 @@
   <div class="modal-content">
       <span class="close-modal">&times;</span>
       <h3>Reply to Comment</h3>
-      <% if(users?._id){ %>
+      <% if(currentUser){ %>
       <form id="replyForm">
           <input type="hidden" id="replyToPostId">
           <input type="hidden" id="replyToCommentId">
           
-              <input type="hidden" id="replyAuthor" value="<%=users.displayName%>" required>
+              <input type="hidden" id="replyAuthor" value="<%=currentUser.displayName%>" required>
           
           <div class="form-group">
               <textarea id="replyContent" placeholder="Write your reply..." required></textarea>

@@ -20,7 +20,7 @@ async function handleLogout() {
       });
   
       // Add cache-buster to the request
-      const response = await fetch(`/logout?_=${Date.now()}`, {
+      const response = await fetch('/logout', { //await fetch(`/logout?_=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +37,8 @@ async function handleLogout() {
         sessionStorage.clear();
         
         // Force a hard refresh with cache busting
-        window.location.href = `/?logout=${Date.now()}`;
+        // window.location.href = `/?logout=${Date.now()}&nocache=${Date.now()}`;
+        window.location.href = `/?logout=true&nocache=${Date.now()}`;
       } else {
         throw new Error('Logout failed');
       }
@@ -50,4 +51,9 @@ async function handleLogout() {
       });
     }
   }
-  document.getElementById('logout-button')?.addEventListener('click', handleLogout);
+  // document.getElementById('logout-button')?.addEventListener('click', handleLogout);
+  try {
+    document.getElementById('logout-button')?.addEventListener('click', handleLogout);
+  } catch (error) {
+    console.error('Error attaching logout handler:', error);
+  }

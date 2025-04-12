@@ -3,6 +3,8 @@ const COMMENTS_PER_PAGE = 2;
 let currentPage = {};
 let totalComments = {};
 
+ 
+    
 document.addEventListener('DOMContentLoaded', () => {
     // Load comments for all posts when page loads
     document.querySelectorAll('.post').forEach(postElement => {
@@ -53,8 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     form.reset();
                     currentPage[postId] = 1;
+                    const { total } = await response.json(); // Assuming your server returns the new total
+                updateCommentsCount(postId, total);
                     await loadComments(postId);
-                    updateCommentsCount(postId);
+                    // updateCommentsCount(postId);
                 }
             } catch (err) {
                 console.error('Error submitting comment:', err);
@@ -99,6 +103,8 @@ async function loadComments(postId) {
         
         // container.innerHTML = '<p>Loading comments...</p>';
         const commentsList = container.querySelector('.comments-list');
+        const countElement = container.closest('.post').querySelector('.comments-count');
+
         commentsList.innerHTML = '<p>Loading comments...</p>';
         
         const response = await fetch(`/posts/${postId}/comments?page=1&limit=${COMMENTS_PER_PAGE}`);
@@ -109,15 +115,18 @@ async function loadComments(postId) {
 
         if (comments.length === 0) {
             commentsList.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
-            updateCommentsCount(postId, 0);
+            countElement.textContent = '0'; // Explicitly set to 0 if no comments
+            // updateCommentsCount(postId, 0);
             return;
         }
 
         comments.forEach(comment => {
             commentsList.insertAdjacentHTML('beforeend', renderComment(comment));
         });
-        
-        updateCommentsCount(postId, total);
+
+        // Update count with the actual total from server
+        countElement.textContent = total;
+        // updateCommentsCount(postId, total);
         updatePaginationUI(postId);
         attachCommentActionsListeners(postId);
         

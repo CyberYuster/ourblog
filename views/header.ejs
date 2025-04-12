@@ -28,15 +28,15 @@
                     <li><a href="/">Home</a></li>
                     <li><a href="/about">About</a></li>
                     <% if(!users?._id){ %>
-                    <li><a href="/signup">Sign in/Sign up</a></li>
+                        <li class="guest-menu" style="display: <%= users ? 'none' : 'block' %>">
+                            <a href="/signup">Sign in/Sign up</a>
+                          </li>
                     <% }else{ %>
-                        <li>
-
-                                  <button id="logout-button" class="dropdown-item">
-                                    <i class="fas fa-sign-out-alt"></i> Log Out
-                                  </button>
-
-                            </li>
+                        <li class="user-menu" style="display: <%= users ? 'block' : 'none' %>">
+                            <button id="logout-button" class="dropdown-item">
+                              <i class="fas fa-sign-out-alt"></i> Log Out
+                            </button>
+                          </li>
                    <% } %>
                     <li><a href="/compose">Compose</a></li>
                     

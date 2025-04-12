@@ -54,14 +54,17 @@ app.use(session({
   }));
 
   app.use((req, res, next) => {
-    // Check for your specific session user variable
-    if (req.session.users) {
-      res.set({
-        'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-    }
+   // Check if this is a logout request
+   if (!req.session?.users) {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
+  
+  // Set user data for templates
+  res.locals.users = req.session.users || null;
     next();
   });
 
@@ -71,11 +74,11 @@ app.use(passport.session());
 
 
 // setting the user session to be used to all middlewares
-app.use((req,res,next)=>{
-  res.locals.users = req.session.users || null;
+// app.use((req,res,next)=>{
+//   res.locals.users = req.session.users || null;
 
-  next();
-});
+//   next();
+// });
 
 
 // Allow 3 password-reset attempts per 15 minutes
@@ -127,12 +130,12 @@ const upload = multer({
   }
 });
 
-app.get('/api/auth/status', (req, res) => {
-  res.json({
-    authenticated: !!req.session.user,
-    user: req.session.user || null
-  });
-});
+// app.get('/api/auth/status', (req, res) => {
+//   res.json({
+//     authenticated: !!req.session.users,
+//     user: req.session.users || null
+//   });
+// });
 
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
@@ -197,6 +200,17 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
+app.use((req, res, next) => {
+  if (!req.session.users) {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
+  next();
+});
+
 // Facebook authentication routes
 app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
 
@@ -229,9 +243,9 @@ await client.close();
   }
 );
 
-// comments area
 
 
+// comments area starts here
 // POST route for adding comments
 app.post('/posts/:id/comments', async (req, res) => {
   const uri="mongodb://127.0.0.1/27017";
@@ -268,6 +282,8 @@ app.get('/posts/:id/comments', async (req, res) => {
   try {
     await client.connect();
       const postId = req.params.id;
+
+      // const { author, content } = req.body;
 
       const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 2;
@@ -383,13 +399,17 @@ app.delete('/comments/:commentId', async (req, res) => {
   }
 });
 
+
+
 app.get("/",async (req,res)=>{
+  res.set('Cache-Control', 'no-store');
+
 const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
 const ourblog=client.db("ourblog");
 const postsCollection=ourblog.collection("posts");
-// const commentsCollection = ourblog.collection('comments');
+const commentsCollection = ourblog.collection('comments');
 
 // Get page number from query (default to 1 if not specified)
 const page = parseInt(req.query.page) || 1;
@@ -404,7 +424,20 @@ const totalPages = Math.ceil(totalPosts / postsPerPage);
 allPosts= await postsCollection.find().sort({createdAt:-1}).skip(skip).limit(postsPerPage).toArray();
 req.session.users=convertor;
 
-res.render("home",{allPosts,currentPage: page,totalPages,hasNextPage: page < totalPages,hasPrevPage: page > 1});
+// Get comment counts for each post
+const postsWithCounts = await Promise.all(allPosts.map(async post => {
+  const count = await commentsCollection.countDocuments({ 
+    postId: new ObjectId(post._id),
+    parentId: { $exists: false } // Only count top-level comments
+  });
+  return { ...post, commentCount: count };
+}));
+
+res.render("home",{allPosts:postsWithCounts,currentPage: page,totalPages,hasNextPage: page < totalPages,hasPrevPage: page > 1,
+// Pass the user's authentication status and info
+isAuthenticated: !!req.session.users?._id,
+currentUser: req.session.users || null
+});
 
 }catch(err){
 console.log(err);
@@ -649,7 +682,14 @@ app.get('/auth/google/callback', async (req, res) => {
     }
 });
 
-app.get("/compose",(req,res)=>{
+function ensureAuthenticated(req, res, next) {
+  if (req.session.users?._id) {
+    return next();
+  }
+  res.redirect('/signin');
+}
+
+app.get("/compose",ensureAuthenticated,(req,res)=>{
   if(!res.locals.users?._id){ // checks if the user is logged in 
    return res.redirect("/signin");
   } 
@@ -839,10 +879,9 @@ await client.close();
 });
 
 app.post("/logout",(req,res)=>{
-
-req.session.regenerate(err => {
+req.session.destroy(err => {
   if (err) {
-    console.error('Session regeneration error:', err);
+    console.error('Session destruction error:', err);
     return res.status(500).json({ error: 'Logout failed' });
   }
 
@@ -850,26 +889,39 @@ req.session.regenerate(err => {
   res.clearCookie('connect.sid', {
     path: '/',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Use secure in production
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 0 // Immediately expire
   });
-  // Clear any other auth cookies you might have
-  res.clearCookie('userData', { path: '/' });
 
   // Add cache control headers
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+    // For API clients
+    if (req.accepts('json')) {
+      return res.json({ success: true });
+    }
+    
+    // For web browsers - force a hard redirect with cache busting
+    // res.redirect(302, '/?logout=' + Date.now());
+    res.redirect(302, `/?logout=true&nocache=${Date.now()}`);
 
-  // For API clients
-  if (req.accepts('json')) {
-    return res.json({ success: true });
-  }
-  // For web browsers - force a hard redirect
-  res.redirect(302, '/?logout=' + Date.now());
+  });
+
 });
 
+// Auth status endpoint
+app.get('/api/auth/status', (req, res) => {
+  // Add cache control
+  res.set('Cache-Control', 'no-store');
+  
+  res.json({
+    authenticated: !!req.session?.users,
+    user: req.session?.users || null
+  });
 });
 
 app.get("/passwordreset",(req,res)=>{
