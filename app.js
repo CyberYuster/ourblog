@@ -45,6 +45,9 @@ let loggedUser={};
 let convertor={};
 
 let allPosts=[];
+
+// const uri="mongodb://127.0.0.1/27017";
+const uri="mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 // Session setup (required for Passport)
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -71,14 +74,6 @@ app.use(session({
   // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
-
-
-// setting the user session to be used to all middlewares
-// app.use((req,res,next)=>{
-//   res.locals.users = req.session.users || null;
-
-//   next();
-// });
 
 
 // Allow 3 password-reset attempts per 15 minutes
@@ -130,12 +125,7 @@ const upload = multer({
   }
 });
 
-// app.get('/api/auth/status', (req, res) => {
-//   res.json({
-//     authenticated: !!req.session.users,
-//     user: req.session.users || null
-//   });
-// });
+
 
 passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
@@ -156,7 +146,7 @@ passport.use(new FacebookStrategy({
   console.log('User signed up with Facebook:', user);
   done(null, user);
 
-  const uri = "mongodb://127.0.0.1:27017";
+  // const uri = "mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 
   const client = new MongoClient(uri);
   
@@ -219,7 +209,7 @@ app.get('/auth/facebook/callback',
   (req, res) => {
     // Successful authentication, redirect to a success page
  
-    const uri = "mongodb://127.0.0.1:27017";
+    // const uri = "mongodb://127.0.0.1:27017";
 
     const client = new MongoClient(uri);
     
@@ -248,7 +238,7 @@ await client.close();
 // comments area starts here
 // POST route for adding comments
 app.post('/posts/:id/comments', async (req, res) => {
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -277,7 +267,7 @@ app.post('/posts/:id/comments', async (req, res) => {
 
 // GET route to fetch comments for a post
 app.get('/posts/:id/comments', async (req, res) => {
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -321,7 +311,7 @@ await client.close();
 
 // POST comment reply
 app.post('/posts/:postId/comments/:commentId/replies', async (req, res) => {
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -354,7 +344,7 @@ app.post('/posts/:postId/comments/:commentId/replies', async (req, res) => {
 });
 // UPDATE comment
 app.put('/comments/:commentId', async (req, res) => {
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -379,7 +369,7 @@ app.put('/comments/:commentId', async (req, res) => {
 
 // DELETE comment
 app.delete('/comments/:commentId', async (req, res) => {
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -404,7 +394,7 @@ app.delete('/comments/:commentId', async (req, res) => {
 app.get("/",async (req,res)=>{
   res.set('Cache-Control', 'no-store');
 
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
 const ourblog=client.db("ourblog");
@@ -461,7 +451,7 @@ app.get("/signup",(req,res)=>{
 });
 
 app.post("/signup",(req,res)=>{
-  const uri = "mongodb://127.0.0.1:27017";
+  // const uri = "mongodb://127.0.0.1:27017";
 
   const client = new MongoClient(uri);
   
@@ -499,7 +489,7 @@ app.get("/signin",(req,res)=>{
 });
 
 app.post("/signin",(req,res)=>{
-  const uri = "mongodb://127.0.0.1:27017";
+  // const uri = "mongodb://127.0.0.1:27017";
 
   const client = new MongoClient(uri);
   async function run() {
@@ -544,7 +534,7 @@ app.post("/signin",(req,res)=>{
 
 // Username availability check API
 app.get('/api/check-username', async (req, res) => {
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -577,7 +567,7 @@ await client.close();
 });
 
 app.get("/api/check-displayname",async (req,res)=>{
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try{
 await client.connect();
@@ -632,7 +622,7 @@ app.get('/auth/google/callback', async (req, res) => {
 
         console.log('User signed up well:', { sub, name, email, picture });
 
-        const uri = "mongodb://127.0.0.1:27017";
+        // const uri = "mongodb://127.0.0.1:27017";
 
   const clients = new MongoClient(uri);
   
@@ -699,7 +689,7 @@ res.render("compose");
 app.post("/compose",upload.single('image'),async (req,res)=>{
 if(!res.locals.users?._id) return res.redirect("/signin");
 
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 
 try{
@@ -735,7 +725,7 @@ await client.close();
 });
 
 app.get("/posts/:id",async (req,res)=>{
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
   await client.connect();
@@ -753,7 +743,7 @@ await client.close();
 });
 
 app.post("/edit",upload.single('image'),async (req,res)=>{
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try{
 await client.connect();
@@ -820,7 +810,7 @@ await client.close();
 });
 
 app.get("/edits/:id",async (req,res)=>{
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
 await client.connect();
@@ -843,7 +833,7 @@ await client.close();
 });
 
 app.get("/delete/:id",async (req,res)=>{
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
 await client.connect();
@@ -935,7 +925,7 @@ res.render("reset-password",{token:req.query.token});
 // Route to initiate password reset
 app.post('/request-password-reset', async (req, res) => {
   const { username } = req.body;
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -976,7 +966,7 @@ app.post('/request-password-reset', async (req, res) => {
 // Route to actually reset password
 app.post('/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
-  const uri="mongodb://127.0.0.1/27017";
+  // const uri="mongodb://127.0.0.1/27017";
   const client=new MongoClient(uri);
   try {
     await client.connect();
@@ -1006,7 +996,7 @@ app.post('/reset-password', async (req, res) => {
 });
 
 app.get("/api/search",async (req,res)=>{
-const uri="mongodb://127.0.0.1/27017";
+// const uri="mongodb://127.0.0.1/27017";
 const client=new MongoClient(uri);
 try{
 await client.connect();

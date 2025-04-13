@@ -28,11 +28,11 @@
                     <li><a href="/">Home</a></li>
                     <li><a href="/about">About</a></li>
                     <% if(!users?._id){ %>
-                        <li class="guest-menu" style="display: <%= users ? 'none' : 'block' %>">
+                        <li>
                             <a href="/signup">Sign in/Sign up</a>
                           </li>
                     <% }else{ %>
-                        <li class="user-menu" style="display: <%= users ? 'block' : 'none' %>">
+                        <li>
                             <button id="logout-button" class="dropdown-item">
                               <i class="fas fa-sign-out-alt"></i> Log Out
                             </button>

@@ -129,12 +129,7 @@ async function loadComments(postId) {
         // updateCommentsCount(postId, total);
         updatePaginationUI(postId);
         attachCommentActionsListeners(postId);
-        
-        // container.innerHTML = comments.map(comment => renderComment(comment)).join('');
-        // updateCommentsCount(postId, comments.length);
-        
-        // // Attach event listeners to action buttons
-        // attachCommentActionsListeners(postId);
+
     } catch (err) {
         console.error(`Error loading comments for post ${postId}:`, err);
         const container = document.getElementById(`comments-${postId}`);
