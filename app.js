@@ -26,10 +26,13 @@ const rateLimit = require('express-rate-limit');
 
 // const commentRoutes = require('./routes/comments');
 
+const GOOGLE_CALLBACK=process.env.NODE_ENV === 'production'
+? 'https://fierce-garden-84788-b2e256f1b4ea.herokuapp.com/auth/google/callback'
+: process.env.GOOGLE_CALLBACK_URI;
 
 const client = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,process.env.GOOGLE_CLIENT_SECRETS, // Add your client secret here
-    process.env.GOOGLE_CALLBACK_URI
+    GOOGLE_CALLBACK
 );
 
 const app=express();
