@@ -50,10 +50,11 @@ let allPosts=[];
 const uri="mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 // Session setup (required for Passport)
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS
+    // cookie: { secure: true } // Set to true if using HTTPS
+    store: new (require('connect-pg-simple')(session))() // For production
   }));
 
   app.use((req, res, next) => {
@@ -126,11 +127,14 @@ const upload = multer({
 });
 
 
-
-passport.use(new FacebookStrategy({
+const callbackURL = process.env.NODE_ENV === 'production'
+  ? 'https://fierce-garden-84788-b2e256f1b4ea.herokuapp.com/auth/facebook/callback'
+  : process.env.FACEBOOK_CALLBACK_URI;
+passport.use(
+  new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_CLIENT_ID, // Replace with your Facebook App ID
     clientSecret: process.env.FACEBOOK_CLIENT_SECRETS, // Replace with your Facebook App Secret
-    callbackURL: process.env.FACEBOOK_CALLBACK_URI,
+    callbackURL: callbackURL,
     profileFields: ['id', 'displayName', 'email', 'photos'], // Fields to retrieve
   }, (accessToken, refreshToken, profile, done) => {
     // This function is called when Facebook authentication is successful
