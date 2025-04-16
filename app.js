@@ -9,6 +9,7 @@ const bodyParser=require("body-parser");
 const passport=require("passport");
 const FacebookStrategy=require("passport-facebook").Strategy;
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const nodemailer=require("nodemailer");
 const _=require("lodash");
 const { MongoClient,ObjectId} = require("mongodb");
@@ -49,13 +50,25 @@ let allPosts=[];
 // const uri="mongodb://127.0.0.1/27017";
 const uri="mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 // Session setup (required for Passport)
+// app.use(session({
+//     secret: process.env.SESSION_SECRET || 'your-secret-key',
+//     resave: false,
+//     saveUninitialized: true,
+//     // cookie: { secure: true } // Set to true if using HTTPS
+//     store: new (require('connect-pg-simple')(session))() // For production
+//   }));
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: true,
-    // cookie: { secure: true } // Set to true if using HTTPS
-    store: new (require('connect-pg-simple')(session))() // For production
-  }));
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    collectionName: 'sessions'
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 // 1 day
+  }
+}));
 
   app.use((req, res, next) => {
    // Check if this is a logout request
