@@ -23,4 +23,11 @@
     <p>So what are you waiting for? Join <strong>OurBlog</strong>, create your post, and share your ideas with the world. Let’s create a future where everyone has a platform to make their voice heard!</p>
 
 </section>
+<script>
+    window.addEventListener('pageshow', function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+  </script>
 <%-include("footer")-%>

@@ -1,5 +1,5 @@
 <%-include("header")-%>
-<form method="post" action="/edit" enctype="multipart/form-data">
+<form method="post" action="/auth/edit" enctype="multipart/form-data">
   
 <div class="form-group">
     <label for="subject">Post Title:</label>
@@ -35,4 +35,11 @@
 
 <button class="btn btn-primary" type="submit">EDIT</button>
 </form>
+<script>
+    window.addEventListener('pageshow', function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
+  </script>
 <%-include("footer")-%>

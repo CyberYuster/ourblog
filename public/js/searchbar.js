@@ -17,7 +17,7 @@ const searchInput = document.getElementById('searchInput');
     }
     
     debounce(() => {
-      fetch(`/api/search?q=${encodeURIComponent(query)}`)
+      fetch(`/auth/api/search?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(posts => {
           if (posts.length === 0) {

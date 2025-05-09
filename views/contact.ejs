@@ -8,7 +8,7 @@
       <% } %>
 
     <h2>Contact Developer</h2>
-    <form action="/send-email" method="post">
+    <form action="/send_email" method="post">
      
         <div class="form-group">
             <label for="name">Name:</label>
@@ -32,5 +32,11 @@
      }, <%= delay %>);
     </script>
     <% } %>
-
+    <script>
+        window.addEventListener('pageshow', function(event) {
+          if (event.persisted) {
+            window.location.reload();
+          }
+        });
+      </script>
 <%-include("footer")-%>

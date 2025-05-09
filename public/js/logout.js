@@ -20,7 +20,7 @@ async function handleLogout() {
       });
   
       // Add cache-buster to the request
-      const response = await fetch('/logout', { //await fetch(`/logout?_=${Date.now()}`, {
+      const response = await fetch('/auth/logout', { //await fetch(`/logout?_=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,7 +28,7 @@ async function handleLogout() {
         },
         credentials: 'include'
       });
-  
+  console.log("logout client response is : ",response);
       if (response.ok) {
         await swalInstance.close();
         
@@ -39,6 +39,7 @@ async function handleLogout() {
         // Force a hard refresh with cache busting
         // window.location.href = `/?logout=${Date.now()}&nocache=${Date.now()}`;
         window.location.href = `/?logout=true&nocache=${Date.now()}`;
+        // window.location.href = '/';
       } else {
         throw new Error('Logout failed');
       }
@@ -51,7 +52,6 @@ async function handleLogout() {
       });
     }
   }
-  // document.getElementById('logout-button')?.addEventListener('click', handleLogout);
   try {
     document.getElementById('logout-button')?.addEventListener('click', handleLogout);
   } catch (error) {

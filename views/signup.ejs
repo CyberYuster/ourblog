@@ -4,26 +4,26 @@
 <div class="icons"style="margin-top:2rem;text-align: center">
   <div class="card col-md-6">
     <div class="card-body">
-        <a href="/auth/google"><img src="picha/google.png"style="width:2.2rem;height:2.2rem">Sign in with Google</a>
+        <a href="/auth/google"><img src="/picha/google.png"style="width:2.2rem;height:2.2rem">Sign in with Google</a>
     </div>
   </div>
   <div class="card col-md-6">
     <div class="card-body">
-        <a href="/auth/facebook"><img src="picha/facebook.png"style="width:2.2rem;height:2.2rem"> Sign in with Facebook</a>
+        <a href="/auth/facebook"><img src="/picha/facebook.png"style="width:2.2rem;height:2.2rem"> Sign in with Facebook</a>
     </div>
   </div>
 </div>
 <h6 style="text-align: center;" class="mt-4">OR <br>(make sure you remember your username !!!)<br></h6>
 <!-- <h8 style="text-align: center;">(if you don't have an email or password) sign up here</h8> -->
 <div class=""style="justify-content:center;align-items:center;display:flex;">
-    <form method="post" action="/signup">
+    <form method="post" action="/auth/signup">
     
-      <small style="color: red;"><%=data%></small>
+      <small style="color: rgb(136, 135, 164);"><%=data%></small>
       <input type="text"name="displayname" id="displayname" placeholder="Enter unique display name" class="form-control" autocomplete="off" required oninput="checkDisplaynameAvailability()">
           <small id="displaynameHelp" class="form-text"></small>
       <br>
 
-          <input type="text"name="username" id="username" placeholder="Enter unique username" class="form-control" autocomplete="off" required oninput="checkUsernameAvailability()">
+          <input type="text"name="username" id="username" placeholder="Enter unique username(email)" class="form-control" autocomplete="off" required oninput="checkUsernameAvailability()">
           <small id="usernameHelp" class="form-text"></small>
       <br>
     
@@ -32,9 +32,9 @@
        <br>
       <button id="registerBtn" class="btn btn-primary btn-sm" type="submit" disabled>SIGNUP</button>
       <br>
-      <a href="/signin">you have an account already (login)</a>
+      <a href="/auth/signin">you have an account already (login)</a>
       <br>
-      <a href="/passwordreset">Forgot Password ?</a>
+      <a href="/auth/passwordreset">Forgot Password ?</a>
     </form>
 </div>
 <script>
@@ -64,7 +64,7 @@ function updateRegisterButton() {
     }
   
     try {
-      const response = await fetch(`/api/check-username?username=${encodeURIComponent(username)}`);
+      const response = await fetch(`/auth/api/check-username?username=${encodeURIComponent(username)}`);
     const data = await response.json();
     
     if (data.available) {
@@ -127,7 +127,7 @@ isDisplaynameValid = false;
   }
   
     try {
-      const response = await fetch(`/api/check-displayname?displayname=${encodeURIComponent(displayname)}`);
+      const response = await fetch(`/auth/api/check-displayname?displayname=${encodeURIComponent(displayname)}`);
     const data = await response.json();
     
     if (data.available) {
@@ -147,5 +147,10 @@ isDisplaynameValid = false;
   updateRegisterButton();
 }
 
+    window.addEventListener('pageshow', function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
 </script>
 <%- include("footer") -%> 

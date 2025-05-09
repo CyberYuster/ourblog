@@ -26,21 +26,23 @@
             <nav>
                 <ul>
                     <li><a href="/">Home</a></li>
-                    <li><a href="/about">About</a></li>
-                    <% if(!users?._id){ %>
+                    <li><a href="/auth/about">About</a></li>
+                    <% if(!user){ %>
                         <li>
-                            <a href="/signup">Sign in/Sign up</a>
+                            <a href="/auth/signup">Sign in/Sign up</a>
                           </li>
                     <% }else{ %>
                         <li>
-                            <button id="logout-button" class="dropdown-item">
-                              <i class="fas fa-sign-out-alt"></i> Log Out
-                            </button>
+                            <!-- <button id="logout-button" class="dropdown-item"> -->
+                              <!-- <i class="fas fa-sign-out-alt"></i> Log Out -->
+                               <a href="#" id="logout-button">Log Out</a>
+                                <!-- <h5 id="logout-button">Log Out</h5> -->
+                            <!-- </button> -->
                           </li>
                    <% } %>
-                    <li><a href="/compose">Compose</a></li>
+                    <li><a href="/auth/compose">Compose</a></li>
                     
-                    <li><a href="/contact">Contact</a></li>
+                    <li><a href="/auth/contact">Contact</a></li>
                    
                     <li><!-- Search bar -->
                         <div class="search-container">

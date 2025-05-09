@@ -44,14 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Posting...';
                 
-                const response = await fetch(`/posts/${postId}/comments`, {
+                const response = await fetch(`/comments/posts/${postId}/comments`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ author, content })
                 });
-                
+                console.log("the response for comments is : ",response);
                 if (response.ok) {
                     form.reset();
                     currentPage[postId] = 1;
@@ -67,6 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Post Comment';
             }
+            setTimeout(function() {
+                window.location.reload();
+              }, 100); // slight delay to allow form submission
         });
     });
     
@@ -107,7 +110,7 @@ async function loadComments(postId) {
 
         commentsList.innerHTML = '<p>Loading comments...</p>';
         
-        const response = await fetch(`/posts/${postId}/comments?page=1&limit=${COMMENTS_PER_PAGE}`);
+        const response = await fetch(`/comments/posts/${postId}/comments?page=1&limit=${COMMENTS_PER_PAGE}`);
         const { comments, total } = await response.json();
         
         commentsList.innerHTML = '';
@@ -156,7 +159,7 @@ async function loadMoreComments(postId) {
         loadingIndicator.style.display = 'block';
         
         currentPage[postId]++;
-        const response = await fetch(`/posts/${postId}/comments?page=${currentPage[postId]}&limit=${COMMENTS_PER_PAGE}`);
+        const response = await fetch(`/comments/posts/${postId}/comments?page=${currentPage[postId]}&limit=${COMMENTS_PER_PAGE}`);
         const { comments } = await response.json();
         comments.forEach(comment => {
             commentsList.insertAdjacentHTML('beforeend', renderComment(comment));
@@ -278,7 +281,7 @@ function openReplyModal(postId, commentId) {
         const content = document.getElementById('replyContent').value;
         
         try {
-            const response = await fetch(`/posts/${postId}/comments/${commentId}/replies`, {
+            const response = await fetch(`/comments/posts/${postId}/comments/${commentId}/replies`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -312,7 +315,7 @@ function openEditModal(commentId, currentContent) {
         const postId = document.querySelector(`.comment[data-comment-id="${commentId}"]`).closest('.post').dataset.postId;
         
         try {
-            const response = await fetch(`/comments/${commentId}`, {
+            const response = await fetch(`/comments/comments/${commentId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -333,7 +336,7 @@ function openEditModal(commentId, currentContent) {
 // Delete comment
 async function deleteComment(postId, commentId) {
     try {
-        const response = await fetch(`/comments/${commentId}`, {
+        const response = await fetch(`/comments/comments/${commentId}`, {
             method: 'DELETE'
         });
         
