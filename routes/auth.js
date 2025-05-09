@@ -56,6 +56,7 @@ router.get("/",async(req,res)=>{
 //   res.set('Cache-Control', 'no-store');
 
 try{
+await client.connect();
 const ourblog=client.db("ourblog");
 const postsCollection=ourblog.collection("posts");
 const commentsCollection = ourblog.collection('comments');
@@ -89,7 +90,7 @@ res.render("home",{allPosts:postsWithCounts,currentPage: page,totalPages,hasNext
 console.log(err);
 res.status(500).send("Error on retrieving posts");
 }finally{
-client.close();
+await client.close();
 }
 });
 
@@ -243,7 +244,7 @@ router.get('/api/check-username', async (req, res) => {
       router.get("/posts/:id",async (req,res)=>{
       
         try{
-          await client.connect();
+        await client.connect();
         const ourblog=client.db("ourblog");
         const postCollection=ourblog.collection("posts");
         const idvalue=new ObjectId(req.params.id);
