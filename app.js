@@ -24,7 +24,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: 'mongodb://127.0.0.1:27017/ourblog' }),
+  store: MongoStore.create({ mongoUrl: 'mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/ourblog?retryWrites=true&w=majority&appName=Cluster1' }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
