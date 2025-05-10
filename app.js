@@ -42,6 +42,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use((req, res, next) => {
+  res.locals.user = req.user || null;
+  next();
+});
+
+app.use((req, res, next) => {
   console.log('----- REQUEST DEBUG -----');
   console.log('Session ID:', req.sessionID);
   console.log('Session:', req.session);
@@ -50,10 +55,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  res.locals.user = req.user || null;
-  next();
-});
+
 
 //Routes
 
