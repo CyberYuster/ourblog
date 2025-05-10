@@ -44,7 +44,7 @@ passport.use(new LocalStrategy({
     }
 }));
 // google strategy
-const callback=process.env.NODE_ENV === 'production'?"https://fierce-garden-84788-b2e256f1b4ea.herokuapp.com/auth/google/callback":process.env.GOOGLE_CALLBACK_URI;
+const callback=process.env.NODE_ENV === 'production'?process.env.GOOGLE_CALLBACK:process.env.GOOGLE_CALLBACK_URI;
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
@@ -63,7 +63,7 @@ passport.use(new GoogleStrategy({
 
 // facebook strategy
 const callbackURL = process.env.NODE_ENV === 'production'
-  ? 'https://fierce-garden-84788-b2e256f1b4ea.herokuapp.com/auth/facebook/callback'
+  ? process.env.FACEBOOK_CALLBACK
   : process.env.FACEBOOK_CALLBACK_URI;
 
 passport.use(new FacebookStrategy({
