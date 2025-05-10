@@ -170,11 +170,13 @@ router.get('/facebook/callback',
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback', 
   passport.authenticate('google', { 
-    failureRedirect: '/auth/signup',
+    failureRedirect: '/signin',
+    failureFlash: true,
     session: true 
   }),
   (req, res) => {
     req.session.lastActivity = Date.now();
+    console.log("Google auth successful, user:", req.user);
     res.redirect('/');
   }
 );

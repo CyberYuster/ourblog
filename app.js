@@ -43,6 +43,13 @@ app.use((req, res, next) => {
 });
 
 //Routes
+
+app.use((req, res, next) => {
+  console.log('Session:', req.session);
+  console.log('User:', req.user);
+  next();
+});
+
 app.use("/",authRoutes);
 app.use("/auth",authRoutes);
 app.use("/comments",commentRoutes);
