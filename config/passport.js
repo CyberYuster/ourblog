@@ -10,14 +10,15 @@ const User=require('../models/Users');
 passport.serializeUser((user,done)=>{
     console.log("serial user type : ",user.account[0].provider);
     console.log("serial user id : ",user._id);
-    done(null,{id:user._id,type:user.account[0].provider});
+    console.log("the profile id is : ",user.account[0].profile_id);
+    done(null,{id:user._id,type:user.account[0].provider,profile_id:user.account[0].profile_id});
 });
 // desserialization
 passport.deserializeUser(async(serialized,done)=>{
     try{
         console.log("the serialized id : ",serialized.id);
         console.log("the serialized type is : ",serialized.type);
-        const user=serialized.type==="local"?await User.findById(serialized.id):await User.findByProvider(serialized.type,serialized.id);
+        const user=serialized.type==="local"?await User.findById(serialized.id):await User.findByProvider(serialized.type,serialized.profile_id);
         console.log("the user i expect : ",user);
         done(null,user);
     }catch(err){
