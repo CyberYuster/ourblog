@@ -10,7 +10,7 @@ static async findById(id){
         try{
             await client.connect();
          console.log("gotten id : ",new ObjectId(id));
-            const user=await client.db("ourblog").collection("users").findOne({id:new ObjectId(id)});
+            const user=await client.db("ourblog").collection("users").findOne({_id:new ObjectId(id)});
             // const user=await client.db("verify").collection("users").findOne({_id:id});
             console.log("the user at id is : ",user);
             if(!user){
@@ -86,7 +86,7 @@ static async createLocalUser({displayname,username,password}){
     const passwordHash = await bcrypt.hash(password, salt);
     console.log("salt is : ",salt);
 const savedUser={
-    id: new ObjectId(),
+    // id: new ObjectId(),
     displayName:displayname,
     username:username,
     account:[
@@ -119,7 +119,7 @@ console.log("user data : ",user);
 if(user)return user;
 
 const newuser={
-    id:profile.id,
+    // id:profile.id,
     displayName: profile.displayName,
     username: profile.emails[0].value,
     account:[

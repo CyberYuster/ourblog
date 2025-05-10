@@ -10,7 +10,7 @@ const User=require('../models/Users');
 passport.serializeUser((user,done)=>{
     console.log("serial user type : ",user.account[0].provider);
     console.log("serial user id : ",user._id);
-    done(null,{id:user.id,type:user.account[0].provider});
+    done(null,{id:user._id,type:user.account[0].provider});
 });
 // desserialization
 passport.deserializeUser(async(serialized,done)=>{
