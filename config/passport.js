@@ -13,7 +13,7 @@ passport.serializeUser((user,done)=>{
     console.log("the profile id is : ",user.account[0].profile_id);
     done(null,{id:user._id,type:user.account[0].provider,profile_id:user.account[0].profile_id});
 });
-// desserialization
+// deserialization
 passport.deserializeUser(async(serialized,done)=>{
     try{
         console.log("the serialized id : ",serialized.id);
