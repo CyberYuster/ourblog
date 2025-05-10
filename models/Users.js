@@ -56,8 +56,14 @@ await client.close();
         try{
          await client.connect();
             const user=await client.db("ourblog").collection("users").findOne({"account.provider":provider,"account.profile_id":id});
-         console.log("output the user : ",user);
-            return user;
+         
+         if (!user) {
+            console.log("User not found with provider:", provider, "id:", id);
+            return null;
+        }
+        console.log("output the user : ",user);
+            return {
+                ...user,_id:user._id};
         }catch(err){
 console.log("error in findbyprovider : ",err);
 throw err;

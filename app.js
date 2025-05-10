@@ -24,8 +24,10 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: 'mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/ourblog?retryWrites=true&w=majority&appName=Cluster1',ttl: 14 * 24 * 60 * 60 // = 14 days
-   }),
+  store: MongoStore.create({ mongoUrl: 'mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/ourblog?retryWrites=true&w=majority&appName=Cluster1',
+  ttl: 14 * 24 * 60 * 60, // = 14 days
+  autoRemove: 'native' // Better session cleanup   
+}),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,

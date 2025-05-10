@@ -19,7 +19,12 @@ passport.deserializeUser(async(serialized,done)=>{
         console.log("Deserializing:", serialized);
         console.log("the serialized id : ",serialized.id);
         console.log("the serialized type is : ",serialized.type);
-        const user=serialized.type==="local"?await User.findById(serialized.id):await User.findByProvider(serialized.type,serialized.profile_id);
+        if (!serialized) {
+            console.log("No serialized user found");
+            return done(null, false);
+        }
+
+        const user=serialized.type === "local"?await User.findById(serialized.id):await User.findByProvider(serialized.type,serialized.profile_id);
         if (!user) {
             console.log("User not found during deserialization");
             return done(null, false);
