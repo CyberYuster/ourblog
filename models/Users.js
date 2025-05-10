@@ -55,11 +55,12 @@ await client.close();
       
         try{
          await client.connect();
-            const user=await client.db("ourblog").collection("users").findOne({account:{$elemMatch:{provider:provider,profile_id:id}}});
+            const user=await client.db("ourblog").collection("users").findOne({"account.provider":provider,"account.profile_id":id});
          console.log("output the user : ",user);
             return user;
         }catch(err){
-console.log(err);
+console.log("error in findbyprovider : ",err);
+throw err;
         }finally{
 await client.close();
         }

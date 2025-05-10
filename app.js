@@ -22,15 +22,16 @@ app.use(bodyParser.json());
 // session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: 'mongodb+srv://hunteryuster854:vy5psoB313T1ApdH@cluster1.ixh85nb.mongodb.net/ourblog?retryWrites=true&w=majority&appName=Cluster1',ttl: 14 * 24 * 60 * 60 // = 14 days
    }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' 
+   }
 }));
 
 // Passport
@@ -39,17 +40,21 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use((req, res, next) => {
+  console.log('----- REQUEST DEBUG -----');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session:', req.session);
+  console.log('Authenticated User:', req.user);
+  console.log('------------------------');
+  next();
+});
+
+app.use((req, res, next) => {
   res.locals.user = req.user || null;
   next();
 });
 
 //Routes
 
-app.use((req, res, next) => {
-  console.log('Session:', req.session);
-  console.log('User:', req.user);
-  next();
-});
 
 app.use("/",authRoutes);
 app.use("/auth",authRoutes);

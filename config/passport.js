@@ -16,12 +16,18 @@ passport.serializeUser((user,done)=>{
 // deserialization
 passport.deserializeUser(async(serialized,done)=>{
     try{
+        console.log("Deserializing:", serialized);
         console.log("the serialized id : ",serialized.id);
         console.log("the serialized type is : ",serialized.type);
         const user=serialized.type==="local"?await User.findById(serialized.id):await User.findByProvider(serialized.type,serialized.profile_id);
+        if (!user) {
+            console.log("User not found during deserialization");
+            return done(null, false);
+        }
         console.log("the user i expect : ",user);
         done(null,user);
     }catch(err){
+        console.error("Deserialization error:", err);
         done(err);
     }
 });
@@ -51,13 +57,20 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRETS,
     callbackURL: callback,
-    passReqToCallback:true
+    passReqToCallback:true,
+    proxy: true
 },async(req,accessToken,refreshToken,profile,done)=>{
     try{
+        console.log("Google profile received:", profile);
         profile.provider="google";
         const user=await User.findOrCreateSocialUser(profile);
+        console.log("User after findOrCreate:", user);
+        if (!user) {
+            return done(null, false, { message: "Failed to create user" });
+        }
         done(null,user);
     }catch(err){
+        console.error("Google strategy error:", err);
         done(err);
     }
 }));
