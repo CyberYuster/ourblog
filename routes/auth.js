@@ -177,7 +177,9 @@ router.get('/google/callback',
   (req, res) => {
     req.session.lastActivity = Date.now();
     console.log("Google auth successful, user:", req.user);
-    res.redirect('/');
+    req.session.save(() => {
+      res.redirect('/');
+  });
   }
 );
 
