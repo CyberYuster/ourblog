@@ -296,13 +296,13 @@ router.get('/api/check-username', async (req, res) => {
            // Handle image update
            if (req.file) {
             updateData.image = req.file.filename;
-            
+            console.log("new image to be updated : ",req.file.filename);
             // Delete old image if it exists
             if (existingPost.image) {
                 const fs = require('fs');
                 // const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
                 const oldImagePath = getFileUrl(existingPost.image || req.file.key);
-                // console.log("old image path : ",oldImagePath);
+                console.log("old image path to be removed : ",oldImagePath);
                 if (fs.existsSync(oldImagePath)) {
                     fs.unlinkSync(oldImagePath);
                 }
@@ -313,7 +313,7 @@ router.get('/api/check-username', async (req, res) => {
               const fs = require('fs');
               // const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
               const oldImagePath = getFileUrl(existingPost.image || req.file.key);
-
+console.log("old image path is removed from file system : ",oldImagePath);
               if (fs.existsSync(oldImagePath)) {
                   fs.unlinkSync(oldImagePath);
               }
@@ -370,6 +370,7 @@ router.get('/api/check-username', async (req, res) => {
                 if(checkItem.image){
                   // const imagePath = path.join(process.cwd(), 'public','uploads', checkItem.image);
                   const imagePath = getFileUrl(checkItem.image || req.file.key);
+                  console.log("delete image from storage when a post is deleted: ",imagePath);
                   if (fs.existsSync(imagePath)) {
                       fs.unlinkSync(imagePath);
                       console.log(`Deleted image: ${checkItem.image}`);
