@@ -182,6 +182,8 @@ router.get('/google/callback',
         console.error('Session save error:', err);
         return res.status(500).send('Session error');
       }
+      console.log("is our user authenticated? : ",req.isAuthenticated());
+      console.log("authenticated with session : ",req.session?.passport);
       res.redirect('/');
   });
   }
