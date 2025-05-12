@@ -37,12 +37,14 @@ app.use((req, res, next) => {
   }
 });
 }
+
 // session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URL }),
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URL,
   ttl: 14 * 24 * 60 * 60, // = 14 days
   autoRemove: 'native' // Better session cleanup   
 }),
