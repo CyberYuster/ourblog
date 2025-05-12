@@ -27,6 +27,7 @@ app.set('view engine','ejs');
 app.use(bodyParser.json());
 
 // Add this before session middleware
+if(process.env.NODE_ENV === 'production') {
 app.enable('trust proxy');
 app.use((req, res, next) => {
   if (req.header('x-forwarded-proto') !== 'https') {
@@ -35,7 +36,7 @@ app.use((req, res, next) => {
     next();
   }
 });
-
+}
 // session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
