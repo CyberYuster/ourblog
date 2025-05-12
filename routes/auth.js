@@ -1,12 +1,14 @@
+require('dotenv').config();
 const express = require('express');
 const router=express.Router();
 const Users=require("../models/Users");
 const passport = require("passport");
 const bcrypt = require('bcrypt');
+const { upload, getFileUrl }=require("../config/s3Upload");
 
-const multer = require('multer');
+// const multer = require('multer');
 const fs = require('fs');
-const path = require('path');
+// const path = require('path');
 
 // const {ensureAuthenticated} = require("../middleware/auth");
 const {ensureAuthenticated,showifUnauthenticated} = require("../middleware/auth");
@@ -18,42 +20,41 @@ const resetTokens = new Map(); // In-memory store (use Redis in production)
 
 const rateLimit = require('express-rate-limit');
 
-// const uri = "mongodb://127.0.0.1:27017";
+// const uri = process.env.LOCAL_MONGO_URL;
 const uri=process.env.MONGODB_URI;
 const client=new MongoClient(uri);
 let allPosts=[];
 // Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'public/uploads/'); // Create this directory
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'public/uploads/'); // Create this directory
+//   },
+//   filename: (req, file, cb) => {
+//     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+//     cb(null, uniqueSuffix + path.extname(file.originalname));
+//   }
+// });
 
 // File filter to only allow images
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only JPEG, PNG, and GIF images are allowed'), false);
-  }
-};
+// const fileFilter = (req, file, cb) => {
+//   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+//   if (allowedTypes.includes(file.mimetype)) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error('Only JPEG, PNG, and GIF images are allowed'), false);
+//   }
+// };
 
 // Configure upload middleware
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 1024 * 1024 // 1MB limit
-  }
-});
+// const upload = multer({
+//   storage: storage,
+//   fileFilter: fileFilter,
+//   limits: {
+//     fileSize: 1024 * 1024 *1 // 1MB limit
+//   }
+// });
 
 router.get("/",async(req,res)=>{
-//   res.set('Cache-Control', 'no-store');
 
 try{
 await client.connect();
@@ -299,7 +300,8 @@ router.get('/api/check-username', async (req, res) => {
             // Delete old image if it exists
             if (existingPost.image) {
                 const fs = require('fs');
-                const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
+                // const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
+                const oldImagePath = getFileUrl(existingPost.image || req.file.key);
                 // console.log("old image path : ",oldImagePath);
                 if (fs.existsSync(oldImagePath)) {
                     fs.unlinkSync(oldImagePath);
@@ -309,8 +311,9 @@ router.get('/api/check-username', async (req, res) => {
             // Handle image removal
             if (existingPost.image) {
               const fs = require('fs');
-              const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
-              
+              // const oldImagePath = path.join(process.cwd(), 'public','uploads', existingPost.image);
+              const oldImagePath = getFileUrl(existingPost.image || req.file.key);
+
               if (fs.existsSync(oldImagePath)) {
                   fs.unlinkSync(oldImagePath);
               }
@@ -365,8 +368,8 @@ router.get('/api/check-username', async (req, res) => {
                 
                 // delete the image storage
                 if(checkItem.image){
-                  const imagePath = path.join(process.cwd(), 'public','uploads', checkItem.image);
-                            
+                  // const imagePath = path.join(process.cwd(), 'public','uploads', checkItem.image);
+                  const imagePath = getFileUrl(checkItem.image || req.file.key);
                   if (fs.existsSync(imagePath)) {
                       fs.unlinkSync(imagePath);
                       console.log(`Deleted image: ${checkItem.image}`);

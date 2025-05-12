@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { MongoClient,ObjectId} = require("mongodb");
-// const uri="mongodb://127.0.0.1:27017";
+// const uri=process.env.LOCAL_MONGO_URL;
 const uri=process.env.MONGODB_URI;
 const client=new MongoClient(uri);
 // POST route for adding comments

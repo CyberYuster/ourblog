@@ -1,7 +1,7 @@
 const bcrypt=require("bcryptjs");
 const { MongoClient,ObjectId} = require("mongodb");
 const uri=process.env.MONGODB_URI;
-// const uri="mongodb://127.0.0.1:27017";
+// const uri=process.env.LOCAL_MONGO_URL;
 const client=new MongoClient(uri);
 class User{
   
