@@ -42,18 +42,19 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use((req, res, next) => {
-  res.locals.user = req.user || null;
+  console.log('Passport session debug:');
+  console.log('Session:', req.session);
+  console.log('Passport data:', req.session?.passport);
+  console.log('Is authenticated:', req.isAuthenticated());
   next();
 });
 
 app.use((req, res, next) => {
-  console.log('----- REQUEST DEBUG -----');
-  console.log('Session ID:', req.sessionID);
-  console.log('Session:', req.session);
-  console.log('Authenticated User:', req.user);
-  console.log('------------------------');
+  res.locals.user = req.user || null;
   next();
 });
+
+
 
 
 

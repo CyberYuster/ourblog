@@ -176,7 +176,7 @@ router.get('/google/callback',
   }),
   (req, res) => {
     req.session.lastActivity = Date.now();
-    console.log("Google auth successful, user:", req.user);
+    console.log("Google auth successful, user:", req.user," with session : ",req.session);
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
