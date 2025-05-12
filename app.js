@@ -12,12 +12,29 @@ const commentRoutes = require('./routes/comments');
 const emailRoutes = require('./routes/send_email');
 
 const app=express();
+app.set('trust proxy', 1); // Trust first proxy
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', process.env.APP_URI);
+  res.header('Access-Control-Allow-Credentials', true);
+  next();
+});
 // middleware
 
 app.use(express.urlencoded({extended:true}));
 app.use(express.static("public"));
 app.set('view engine','ejs');
 app.use(bodyParser.json());
+
+// Add this before session middleware
+app.enable('trust proxy');
+app.use((req, res, next) => {
+  if (req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(`https://${req.header('host')}${req.url}`);
+  } else {
+    next();
+  }
+});
 
 // session configuration
 app.use(session({
@@ -32,7 +49,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax' 
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' 
    }
 }));
 
