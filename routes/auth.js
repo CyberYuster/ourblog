@@ -4,7 +4,7 @@ const router=express.Router();
 const Users=require("../models/Users");
 const passport = require("passport");
 const bcrypt = require('bcrypt');
-const { upload, getFileUrl }=require("../config/s3Upload");
+const { upload, getFileUrl, deleteFile, updateFile }=require("../config/s3Upload");
 
 // const multer = require('multer');
 const fs = require('fs');
